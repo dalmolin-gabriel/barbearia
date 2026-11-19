@@ -100,6 +100,8 @@ bloqueios.get("/", async (c) => {
   if (!analise.success) return c.json({ erro: "Dados inválidos." }, 400);
   const { de, ate } = analise.data;
   if (ate < de) return c.json({ erro: "Dados inválidos." }, 400);
+  if (somarDias(de, 93) < ate)
+    return c.json({ erro: "Período muito longo (máximo 93 dias)." }, 400);
   const u = c.var.usuario;
   const ini = instanteUTC(de, 0).toISOString();
   const fim = instanteUTC(somarDias(ate, 1), 0).toISOString();

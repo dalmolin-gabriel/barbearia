@@ -221,6 +221,51 @@ describe("agenda do painel", () => {
     });
   });
 
+  describe("correções da revisão", () => {
+    it("atendimento que mudou de barbeiro: situação e remarcar dão 404 e nada muda", async () => {
+      const id = await semearAtendimento(b1.id, QUARTA, 600);
+      await env.DB.prepare("UPDATE atendimentos SET usuario_id = ? WHERE id = ?").bind(b2.id, id).run();
+      const antes = await env.DB.prepare("SELECT * FROM atendimentos WHERE id = ?").bind(id).first<any>();
+      const s = await req(`/api/atendimentos/${id}/situacao`, { metodo: "PATCH", token: b1.token, corpo: { situacao: "cancelado" } });
+      const r = await req(`/api/atendimentos/${id}/remarcar`, { metodo: "PATCH", token: b1.token, corpo: { data: QUARTA, hora: "15:00" } });
+      expect([s.status, r.status]).toEqual([404, 404]);
+      expect(await env.DB.prepare("SELECT * FROM atendimentos WHERE id = ?").bind(id).first()).toEqual(antes);
+    });
+
+    it("bloqueios: período acima de 93 dias dá 400", async () => {
+      const ok = await req("/api/bloqueios?de=2026-12-01&ate=2027-03-04", { token: b1.token });
+      expect(ok.status).toBe(200);
+      const longo = await req("/api/bloqueios?de=2026-12-01&ate=2027-03-05", { token: b1.token });
+      expect(longo.status).toBe(400);
+      expect(((await longo.json()) as any).erro).toBe("Período muito longo (máximo 93 dias).");
+    });
+
+    it("remarcar atendimento já encerrado dá 400", async () => {
+      for (const status of ["atendido", "cancelado", "faltou"]) {
+        const id = await semearAtendimento(b1.id, QUARTA, 600, { status });
+        const r = await req(`/api/atendimentos/${id}/remarcar`, { metodo: "PATCH", token: b1.token, corpo: { data: QUARTA, hora: "15:00" } });
+        expect(r.status).toBe(400);
+        expect(((await r.json()) as any).erro).toBe("Este atendimento não pode ser remarcado.");
+      }
+    });
+
+    it("remarcar sobre bloqueio dá 409 com mensagem própria", async () => {
+      const id = await semearAtendimento(b1.id, QUARTA, 600);
+      await req("/api/bloqueios", { metodo: "POST", token: b1.token, corpo: { data: QUARTA, horaIni: "15:00", horaFim: "16:00" } });
+      const r = await req(`/api/atendimentos/${id}/remarcar`, { metodo: "PATCH", token: b1.token, corpo: { data: QUARTA, hora: "15:00" } });
+      expect(r.status).toBe(409);
+      expect(((await r.json()) as any).erro).toBe("Esse horário está bloqueado.");
+    });
+
+    it("marcar na hora do almoço avisa fora_do_expediente", async () => {
+      const r = await marcar(b1.token, { hora: "12:00" });
+      expect(((await r.json()) as any).avisos).toEqual(["fora_do_expediente"]);
+      const borda = await marcar(b1.token, { hora: "11:45" }); // 11:45-12:15 invade o almoço
+      expect(((await borda.json()) as any).avisos).toEqual(["fora_do_expediente"]);
+      expect((await marcar(b1.token, { hora: "11:30" })).status).toBe(201); // termina às 12:00
+    });
+  });
+
   describe("remarcar", () => {
     it("move o atendimento mantendo preço e duração; sobreposição dá 409", async () => {
       const id = await semearAtendimento(b1.id, QUARTA, 600);

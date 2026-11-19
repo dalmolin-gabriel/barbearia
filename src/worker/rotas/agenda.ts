@@ -128,16 +128,23 @@ atendimentos.patch("/:id/situacao", limiteCorpo, async (c) => {
   const ativa = situacao === "marcado" || situacao === "confirmado" ? 1 : 0;
   const r = await c.env.DB.prepare(
     `UPDATE atendimentos SET status = ?2, atualizado_em = ?3
-       WHERE id = ?1 AND (?4 = 0 OR NOT EXISTS (
+       WHERE id = ?1 AND (?5 = 1 OR usuario_id = ?6) AND (?4 = 0 OR NOT EXISTS (
          SELECT 1 FROM atendimentos o
            WHERE o.id <> atendimentos.id AND o.usuario_id = atendimentos.usuario_id
              AND o.status IN ${ATIVOS} AND o.inicio < atendimentos.fim AND o.fim > atendimentos.inicio
        ))`,
   )
-    .bind(id, situacao, new Date().toISOString(), ativa)
+    .bind(id, situacao, new Date().toISOString(), ativa, ehDono(c) ? 1 : 0, c.var.usuario.id)
     .run();
-  if (r.meta.changes !== 1) return c.json({ erro: MSG_CONFLITO }, 409);
-  return c.json(await buscarAtendimento(c, id));
+  if (r.meta.changes !== 1) {
+    // Não gravou: sumiu/mudou de dono (404) ou o horário reaberto está ocupado (409).
+    if (!(await buscarAtendimento(c, id)))
+      return c.json({ erro: NAO_ENCONTRADO }, 404);
+    return c.json({ erro: MSG_CONFLITO }, 409);
+  }
+  const atual = await buscarAtendimento(c, id);
+  if (!atual) return c.json({ erro: NAO_ENCONTRADO }, 404);
+  return c.json(atual);
 });
 
 atendimentos.patch("/:id/remarcar", limiteCorpo, async (c) => {
@@ -153,6 +160,8 @@ atendimentos.patch("/:id/remarcar", limiteCorpo, async (c) => {
   const id = c.req.param("id");
   const a = await buscarAtendimento(c, id);
   if (!a) return c.json({ erro: NAO_ENCONTRADO }, 404);
+  if (a.status !== "marcado" && a.status !== "confirmado")
+    return c.json({ erro: "Este atendimento não pode ser remarcado." }, 400);
   const alvo = d.usuarioId ?? a.usuario_id;
   if (!podeVerAgenda(c.var.usuario, alvo))
     return c.json({ erro: MSG_PROIBIDO }, 403);
@@ -165,7 +174,7 @@ atendimentos.patch("/:id/remarcar", limiteCorpo, async (c) => {
   // Mesma proteção da marcação: sem outro atendimento ativo nem bloqueio no horário (o próprio fica de fora).
   const r = await c.env.DB.prepare(
     `UPDATE atendimentos SET usuario_id = ?2, inicio = ?3, fim = ?4, atualizado_em = ?5
-       WHERE id = ?1 AND status IN ${ATIVOS}
+       WHERE id = ?1 AND status IN ${ATIVOS} AND (?6 = 1 OR usuario_id = ?7)
          AND NOT EXISTS (
            SELECT 1 FROM atendimentos o
              WHERE o.id <> ?1 AND o.usuario_id = ?2 AND o.status IN ${ATIVOS} AND o.inicio < ?4 AND o.fim > ?3
@@ -174,10 +183,26 @@ atendimentos.patch("/:id/remarcar", limiteCorpo, async (c) => {
            SELECT 1 FROM bloqueios WHERE (usuario_id = ?2 OR usuario_id IS NULL) AND inicio < ?4 AND fim > ?3
          )`,
   )
-    .bind(id, alvo, inicio, fim, new Date().toISOString())
+    .bind(id, alvo, inicio, fim, new Date().toISOString(), ehDono(c) ? 1 : 0, c.var.usuario.id)
     .run();
-  if (r.meta.changes !== 1) return c.json({ erro: MSG_CONFLITO }, 409);
-  return c.json(await buscarAtendimento(c, id));
+  if (r.meta.changes !== 1) {
+    const atual = await buscarAtendimento(c, id);
+    if (!atual) return c.json({ erro: NAO_ENCONTRADO }, 404);
+    if (atual.status !== "marcado" && atual.status !== "confirmado")
+      return c.json({ erro: "Este atendimento não pode ser remarcado." }, 400);
+    const bloq = await c.env.DB.prepare(
+      "SELECT 1 FROM bloqueios WHERE (usuario_id = ?1 OR usuario_id IS NULL) AND inicio < ?3 AND fim > ?2",
+    )
+      .bind(alvo, inicio, fim)
+      .first();
+    return c.json(
+      { erro: bloq ? "Esse horário está bloqueado." : MSG_CONFLITO },
+      409,
+    );
+  }
+  const atual = await buscarAtendimento(c, id);
+  if (!atual) return c.json({ erro: NAO_ENCONTRADO }, 404);
+  return c.json(atual);
 });
 
 const corpoMarcar = z.object({
@@ -225,15 +250,25 @@ atendimentos.post("/", limiteCorpo, async (c) => {
   const avisos: Aviso[] = [];
   const exp = await db
     .prepare(
-      "SELECT aberto, inicio_min, fim_min FROM expediente WHERE usuario_id = ? AND dia_semana = ?",
+      "SELECT aberto, inicio_min, fim_min, almoco_ini_min, almoco_fim_min FROM expediente WHERE usuario_id = ? AND dia_semana = ?",
     )
     .bind(alvo, diaSemanaDe(d.data))
-    .first<{ aberto: number; inicio_min: number; fim_min: number }>();
+    .first<{
+      aberto: number;
+      inicio_min: number;
+      fim_min: number;
+      almoco_ini_min: number | null;
+      almoco_fim_min: number | null;
+    }>();
   if (
     !exp ||
     exp.aberto !== 1 ||
     minuto < exp.inicio_min ||
-    minuto + duracao > exp.fim_min
+    minuto + duracao > exp.fim_min ||
+    (exp.almoco_ini_min !== null &&
+      exp.almoco_fim_min !== null &&
+      minuto < exp.almoco_fim_min &&
+      minuto + duracao > exp.almoco_ini_min)
   )
     avisos.push("fora_do_expediente");
   const bloqueado = await db
@@ -294,5 +329,7 @@ atendimentos.post("/", limiteCorpo, async (c) => {
     ignorarBloqueios: avisos.includes("horario_bloqueado"),
   });
   if (!gravou) return c.json({ erro: MSG_CONFLITO }, 409);
-  return c.json(await buscarAtendimento(c, id), 201);
+  const criado = await buscarAtendimento(c, id);
+  if (!criado) return c.json({ erro: NAO_ENCONTRADO }, 404);
+  return c.json(criado, 201);
 });
