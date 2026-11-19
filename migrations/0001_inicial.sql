@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS bloqueios (
 CREATE TABLE IF NOT EXISTS clientes (
   id TEXT PRIMARY KEY,
   nome TEXT NOT NULL,
-  telefone TEXT NOT NULL UNIQUE, -- normalizado
+  telefone TEXT UNIQUE, -- normalizado; NULL quando o barbeiro marca sem telefone ou após anonimizar
   aceite_em TEXT,
   removido INTEGER NOT NULL DEFAULT 0,
   criado_em TEXT NOT NULL
@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS atendimentos (
   preco_centavos INTEGER NOT NULL CHECK (preco_centavos >= 0),
   inicio TEXT NOT NULL,
   fim TEXT NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('agendado', 'em_atendimento', 'concluido', 'cancelado', 'faltou')),
+  status TEXT NOT NULL DEFAULT 'marcado' CHECK (status IN ('marcado', 'confirmado', 'atendido', 'cancelado', 'faltou')),
   origem TEXT NOT NULL CHECK (origem IN ('online', 'painel')),
   criado_em TEXT NOT NULL,
   atualizado_em TEXT NOT NULL

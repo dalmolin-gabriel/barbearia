@@ -3,7 +3,7 @@
 
 export type Papel = "dono" | "barbeiro";
 
-export type Situacao = "agendado" | "em_atendimento" | "concluido" | "cancelado" | "faltou";
+export type Situacao = "marcado" | "confirmado" | "atendido" | "cancelado" | "faltou";
 
 export type Origem = "online" | "painel";
 
