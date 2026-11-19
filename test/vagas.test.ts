@@ -24,8 +24,10 @@ describe("calcularVagas", () => {
     expect(v).not.toContain(735);
     expect(v).toContain(780);
     expect(v).not.toContain(795);
-    expect(v).toContain(890);
-    expect(v[v.length - 1]).toBe(1090);
+    expect(v).not.toContain(890);
+    expect(v).toContain(900);
+    expect(v).not.toContain(1095);
+    expect(v[v.length - 1]).toBe(1080);
   });
 
   it("aplica a antecedência mínima quando é hoje", () => {

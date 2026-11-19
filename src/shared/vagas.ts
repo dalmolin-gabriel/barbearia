@@ -16,8 +16,7 @@ function colide(ini: number, fim: number, b: Intervalo): boolean {
 }
 
 /**
- * Minutos de início (grade a partir da abertura, de `passo` em `passo`, mais os encaixes
- * colados no fim de um ocupado ou no fechamento) em que o serviço cabe inteiro no expediente, fora do almoço e dos intervalos ocupados.
+ * Minutos de início (grade a partir da abertura, de `passo` em `passo`) em que o serviço cabe inteiro no expediente, fora do almoço e dos intervalos ocupados.
  * `agoraMin` só é informado para hoje; nesse caso exige `antecedenciaMin` de folga.
  */
 export function calcularVagas(p: {
@@ -49,19 +48,9 @@ export function calcularVagas(p: {
   // Primeiro ponto da grade que não é anterior ao mínimo.
   const primeiro = inicioMin + Math.ceil((minimo - inicioMin) / passo) * passo;
 
-  // Candidatos: a grade do expediente, mais os pontos "colados" (fim de cada ocupado, fim do
-  // almoço e o último encaixe antes do fechamento), para não desperdiçar tempo livre.
-  const candidatos = new Set<number>();
-  for (let ini = primeiro; ini + duracaoMin <= fimMin; ini += passo)
-    candidatos.add(ini);
-  const colados = [...ocupados.map((o) => o.fim), fimMin - duracaoMin];
-  if (almoco) colados.push(almoco.fim);
-  for (const c of colados) if (c >= minimo) candidatos.add(c);
-
   const vagas: number[] = [];
-  for (const ini of [...candidatos].sort((x, y) => x - y)) {
+  for (let ini = primeiro; ini + duracaoMin <= fimMin; ini += passo) {
     const fim = ini + duracaoMin;
-    if (ini < inicioMin || fim > fimMin) continue;
     if (almoco && colide(ini, fim, almoco)) continue;
     if (ocupados.some((o) => colide(ini, fim, o))) continue;
     vagas.push(ini);
