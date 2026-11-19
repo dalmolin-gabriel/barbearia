@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { aplicarMigracoes } from "./db/migrar";
 import type { Env } from "./env";
+import { auth } from "./rotas/auth";
 import { saude } from "./rotas/saude";
 
 export const app = new Hono<{ Bindings: Env }>();
@@ -22,5 +23,6 @@ app.use("/api/*", async (c, proximo) => {
 });
 
 app.route("/api/saude", saude);
+app.route("/api/auth", auth);
 
 export default { fetch: app.fetch };
