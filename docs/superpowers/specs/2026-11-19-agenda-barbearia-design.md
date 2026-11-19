@@ -109,12 +109,16 @@ Pensado para quem não gosta de app: botões grandes, poucas telas, tudo no celu
 
 - **Início** (tela inicial, como no `barbearia-bem-gerida`): atendimentos de hoje, previsto, recebido,
   próximo cliente, atendimentos para fechar e próximos horários. Atalhos para lembretes e resumo do mês.
-- **Agendamentos do dia** (pedido do usuário): lista com **todos** os agendamentos do dia escolhido,
-  cada um com **data, horário, nome do cliente, serviço**, barbeiro e situação. Navega por dia
-  (‹ Hoje ›) e por calendário. O pai alterna entre "Minha", cada barbeiro e "Todos".
-- **Agenda em colunas** (outra visão da mesma tela, como no `barbearia-bem-gerida`): uma coluna por
-  barbeiro, horas na lateral e cores por situação (agendado, confirmado, concluído, faltou; bloqueio
-  e horário fechado aparecem tracejados).
+- **Hoje (agendamentos do dia)**, aprovada pelo usuário: precisa ser **simples, bem visível e rápida
+  de ler**. Ela substitui a agenda em colunas, que saiu do projeto.
+  - **Próximo cliente** em destaque no topo, em letra grande: horário, nome, serviço, duração e
+    "em X min", com dois botões grandes: **Chegou/Atendido** e **WhatsApp**.
+  - **Depois:** a fila do dia, uma linha por cliente com **horário · nome · serviço** (no "Todos" do
+    pai, também o barbeiro).
+  - **Já atendidos** descem para o fim, apagados. Quem cancelou ou faltou sai da fila, e o horário fica livre.
+  - Resumo no topo: "6 clientes · 2 atendidos". Navegação **Ontem · Hoje · Amanhã** embaixo, perto
+    do dedão. Tocar na data abre o calendário para qualquer dia.
+  - Cada barbeiro vê só os clientes dele. O pai tem a chave **Meus / Todos**.
 - **Detalhe do atendimento** (ao tocar num agendamento): **Concluir · Cliente confirmou · Remarcar ·
   Não compareceu · Cancelar** e WhatsApp (mandar lembrete ou abrir conversa). Cancelado libera o horário.
 - **+ Marcar cliente:** nome, celular (opcional), serviço, barbeiro (só o pai escolhe), dia e hora.
