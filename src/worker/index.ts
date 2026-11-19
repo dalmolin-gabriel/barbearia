@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { aplicarMigracoes } from "./db/migrar";
 import type { AppEnv } from "./env";
 import { auth } from "./rotas/auth";
+import { publico } from "./rotas/publico";
 import { saude } from "./rotas/saude";
 import { cabecalhos, conferirOrigem } from "./seguranca/middleware";
 
@@ -29,5 +30,6 @@ app.use("/api/*", async (c, proximo) => {
 
 app.route("/api/saude", saude);
 app.route("/api/auth", auth);
+app.route("/api/publico", publico);
 
 export default { fetch: app.fetch };
