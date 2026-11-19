@@ -91,9 +91,11 @@ no código.
 ## 6. Criar a conta do dono (primeiro acesso)
 
 1. Abra `https://SEU-SITE/painel/primeiro-acesso` (troque `SEU-SITE` pelo endereço do passo 2).
-2. Preencha: o código de instalação (o do passo 5), seu nome, o nome de usuário (letras,
+   (Se você abrir `/painel/entrar` antes de existir uma conta, aparece o link
+   **Primeiro acesso? Criar conta do dono**.)
+2. Preencha **Código de instalação** (o do passo 5), **Seu nome**, o nome de usuário (letras,
    números, ponto, hífen ou sublinhado; de 3 a 30 caracteres) e uma senha de pelo menos 8 caracteres.
-3. Clique para criar. Você já entra no painel.
+3. Toque em **Criar conta**. Você já entra no painel.
 
 Essa tela funciona **uma única vez**: depois que existe uma conta, ela deixa de existir.
 Se aparecer "não encontrado", confira se o `CODIGO_INSTALACAO` foi salvo e se o deploy terminou.
@@ -106,7 +108,7 @@ Já dentro do painel:
 
 1. **Serviços**: vieram três de exemplo (Corte, Barba, Corte + Barba) com preço 0. Ajuste os
    preços e as durações, e crie outros se quiser.
-2. **Horários**: o padrão é segunda a sábado, das 9h às 19h, com almoço das 12h às 13h. Ajuste
+2. **Horários** (tela *Horários e folgas*): o padrão é segunda a sábado, das 9h às 19h, com almoço das 12h às 13h. Ajuste
    conforme a sua rotina.
 3. **Equipe**: crie a conta do seu filho (e de outros barbeiros). Cada um tem o próprio usuário
    e a própria agenda. Passe a senha pessoalmente; peça para guardar.
@@ -129,7 +131,9 @@ O site funciona como um aplicativo. Faça isso no celular de quem usa o painel.
 ## 9. Ativar as notificações
 
 1. Com o app aberto (pelo ícone da tela inicial, no iPhone), entre no painel.
-2. Na tela de ajustes/notificações, toque em **Ativar notificações** e aceite o aviso do celular.
+2. Dono: abra a aba **Equipe** e, no cartão **Notificações neste celular**, toque em
+   **Ativar notificações**. Barbeiro: o mesmo cartão aparece no topo da tela **Hoje** enquanto as
+   notificações estiverem desligadas. Aceite o aviso do celular.
 3. Faça um agendamento de teste pelo link público para ver o aviso chegar.
 
 Cada pessoa ativa nas próprias contas e celulares. Se um celular for trocado, ative de novo.
