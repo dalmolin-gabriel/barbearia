@@ -1,6 +1,6 @@
 # Agenda online da barbearia — projeto
 
-Data: 19/11/2026 · Status: rascunho para aprovação
+Data: 19/11/2026 · Status: aprovado pelo usuário em 19/11/2026
 
 ## 1. Para que serve
 
@@ -58,7 +58,7 @@ proteção.
 - Cliente cancelar ou remarcar sozinho pelo sistema *(minha decisão para manter enxuto: a tela
   de confirmação tem um botão "Falar no WhatsApp" para isso, e o barbeiro marca "cancelou")*.
 - Várias barbearias no mesmo sistema, fotos dos barbeiros, logo enviado pelo painel, cores
-  editáveis, feriados como função própria (o pai usa "bloquear horário"), permissão de gerente,
+  editáveis, permissão de gerente,
   edição dos textos das mensagens, relatórios além do resumo do mês.
 
 ## 4. Como funciona
@@ -107,9 +107,9 @@ antecedência e ele perdeu a organização.
 
 Pensado para quem não gosta de app: botões grandes, poucas telas, tudo no celular.
 
-- **Início** (tela inicial, como no `barbearia-bem-gerida`): atendimentos de hoje, previsto, recebido,
-  próximo cliente, atendimentos para fechar e próximos horários. Atalhos para lembretes e resumo do mês.
-- **Hoje (agendamentos do dia)**, aprovada pelo usuário: precisa ser **simples, bem visível e rápida
+- **Menu de baixo** (5 itens): **Hoje · Serviços · Horários · Resumo · Equipe**. Barbeiro que não é dono
+  vê só **Hoje** e **Horários** (só leitura dos próprios horários e bloqueios).
+- **Hoje (agendamentos do dia)** é a tela inicial do painel, aprovada pelo usuário: precisa ser **simples, bem visível e rápida
   de ler**. Ela substitui a agenda em colunas, que saiu do projeto.
   - **Próximo cliente** em destaque no topo, em letra grande: horário, nome, serviço, duração e
     "em X min", com dois botões grandes: **Chegou/Atendido** e **WhatsApp**.
@@ -136,14 +136,16 @@ Pensado para quem não gosta de app: botões grandes, poucas telas, tudo no celu
 - **Só o pai:**
   - **Serviços:** criar, editar e desativar (nome, duração em minutos, preço). Desativar em vez de
     apagar, para não estragar o histórico.
-  - **Horários de trabalho:** para cada barbeiro e cada dia da semana: aberto ou fechado, início,
-    fim e intervalo de almoço.
+  - **Horários e folgas:** para cada barbeiro e cada dia da semana: aberto ou fechado, início,
+    fim e intervalo de almoço. E a lista de **dias fechados** com o botão **"+ Fechar um dia"**: dia
+    inteiro ou a partir de um horário, para a **barbearia toda** ou para **um barbeiro**, com motivo
+    (ex.: "Natal"). Dia fechado some do calendário do cliente.
   - **Resumo do mês:** atendimentos e faturamento do mês, total e por barbeiro, com setas para
     meses anteriores. Faturamento = soma dos preços dos atendimentos marcados como **Atendido**.
   - **Equipe:** cadastrar barbeiros (nome, foto opcional, usuário e senha provisória), editar o horário
     de cada um, trocar a senha e **desativar** quem sair. Barbeiro desativado some da tela do cliente,
     não loga mais e mantém o histórico. Não há limite de barbeiros.
-  - **Clientes:** buscar pelo nome ou celular e apagar os dados de um cliente.
+  - **Clientes** (aberta a partir da tela Equipe): buscar pelo nome ou celular e apagar os dados de um cliente.
 
 ### 4.4 Situações de um atendimento
 
