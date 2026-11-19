@@ -25,7 +25,7 @@
 - Bloqueio de login: **5** senhas erradas seguidas travam o usuário por **15 min**.
 - Público: nome com até **60** caracteres, celular brasileiro (DDD + 9 dígitos), no máximo **2** agendamentos futuros ativos por celular, Turnstile obrigatório e limite por IP de **10 agendamentos/hora** e **120 consultas/min**.
 - SQL sempre com `prepare().bind()`. Proibido `dangerouslySetInnerHTML`.
-- Segredos (`TURNSTILE_SECRET`, `VAPID_PRIVATE_KEY`) só como *secrets* do Cloudflare. Nunca no repositório.
+- Segredos (`TURNSTILE_SECRET`, `VAPID_PRIVATE_KEY`, `CODIGO_INSTALACAO`) só como *secrets* do Cloudflare. Nunca no repositório.
 - Cores: fundo `#0B0B0B`, superfície `#161616`, superfície alta `#222222`, borda `#2E2E2E`, dourado `#D0B848`, dourado escuro `#B8A030`, texto `#E8E6E0`, texto suave `#9C9A94`, verde `#5CC48A`, vermelho `#E0574E` e botão WhatsApp `#25A35F`. Fontes: **Bebas Neue** (títulos) e **Inter** (texto), servidas localmente.
 - O visual segue `docs/telas/*.png` (são 12 telas).
 
@@ -53,7 +53,7 @@ src/worker/
   env.ts                     tipo Env
   db/consultas.ts            funções de acesso ao banco usadas por mais de uma rota
   seguranca/senha.ts  sessao.ts  middleware.ts  limite.ts  turnstile.ts
-  rotas/saude.ts publico.ts auth.ts agenda.ts bloqueios.ts servicos.ts expediente.ts equipe.ts resumo.ts clientes.ts push.ts
+  rotas/saude.ts primeiro-acesso.ts publico.ts auth.ts agenda.ts bloqueios.ts servicos.ts expediente.ts equipe.ts resumo.ts clientes.ts push.ts
   push/notificar.ts
 src/app/                     React
   main.tsx  rotas.tsx  api.ts  estilos.css
@@ -62,7 +62,7 @@ src/app/                     React
   painel/   Login.tsx  Hoje.tsx  Atendimento.tsx  MarcarCliente.tsx  Bloquear.tsx  Lembretes.tsx
             Servicos.tsx  Horarios.tsx  Resumo.tsx  Equipe.tsx  Clientes.tsx  Notificacoes.tsx
 public/  logo.png  icone-192.png  icone-512.png  manifest.webmanifest  sw.js  fontes/*.woff2
-scripts/ criar-dono.mjs  nova-senha.mjs
+scripts/ hash-senha.mjs
 test/    (testes do Worker, um arquivo por rota/módulo) · e2e/agendar.spec.ts
 docs/IMPLANTACAO.md  docs/WHATSAPP.md
 ```
@@ -75,13 +75,13 @@ docs/IMPLANTACAO.md  docs/WHATSAPP.md
 - Create: `package.json`, `tsconfig.json`, `vite.config.ts`, `vitest.config.ts`, `wrangler.jsonc`, `.gitignore`, `index.html`, `src/worker/index.ts`, `src/worker/env.ts`, `src/worker/rotas/saude.ts`, `src/app/main.tsx`, `test/saude.test.ts`
 
 **Interfaces:**
-- Produces: `app` (Hono) exportado de `src/worker/index.ts`, com `export default { fetch: app.fetch }`. O tipo `Env = { DB: D1Database; ASSETS: Fetcher; TURNSTILE_SITE_KEY: string; TURNSTILE_SECRET: string; VAPID_PUBLIC_KEY: string; VAPID_PRIVATE_KEY: string; VAPID_SUBJECT: string; ORIGEM: string }`. Os testes usam `SELF.fetch` de `cloudflare:test`, e o `vitest.config.ts` aplica `migrations/` antes de cada arquivo (`readD1Migrations` + `applyD1Migrations` num `setupFiles`).
+- Produces: `app` (Hono) exportado de `src/worker/index.ts`, com `export default { fetch: app.fetch }`. O tipo `Env = { DB: D1Database; ASSETS: Fetcher; TURNSTILE_SITE_KEY: string; TURNSTILE_SECRET: string; VAPID_PUBLIC_KEY: string; VAPID_PRIVATE_KEY: string; VAPID_SUBJECT: string; CODIGO_INSTALACAO?: string }`. Todas as variáveis podem estar vazias no primeiro deploy: o site precisa abrir mesmo assim.. Os testes usam `SELF.fetch` de `cloudflare:test`, e o `vitest.config.ts` aplica `migrations/` antes de cada arquivo (`readD1Migrations` + `applyD1Migrations` num `setupFiles`).
 
-- [ ] **Step 1:** Crie `package.json` com os scripts `dev` (`vite` + `wrangler dev` via `@cloudflare/vite-plugin`), `build` (`tsc --noEmit && vite build`), `test` (`vitest run`), `e2e` (`playwright test --trace off`) e `deploy` (`npm run build && wrangler deploy`). Em `wrangler.jsonc`, coloque `main: "src/worker/index.ts"`, `compatibility_date: "2025-10-01"`, `compatibility_flags: ["nodejs_compat"]`, `assets: { directory: "./dist/client", binding: "ASSETS", not_found_handling: "single-page-application", run_worker_first: ["/api/*"] }`, `d1_databases: [{ binding: "DB", database_name: "padilhas", database_id: "PREENCHER_NA_IMPLANTACAO", migrations_dir: "migrations" }]` e `vars` com `ORIGEM`, `TURNSTILE_SITE_KEY` (a chave de teste `1x00000000000000000000AA`), `VAPID_PUBLIC_KEY` e `VAPID_SUBJECT`. O `.gitignore` cobre `node_modules`, `dist`, `.wrangler`, `.dev.vars`, `.env*` e `test-results`.
+- [ ] **Step 1:** Crie `package.json` com os scripts `dev` (`vite` + `wrangler dev` via `@cloudflare/vite-plugin`), `build` (`tsc --noEmit && vite build`), `test` (`vitest run`), `e2e` (`playwright test --trace off`) e `deploy` (`npm run build && wrangler deploy`). Em `wrangler.jsonc`, coloque `main: "src/worker/index.ts"`, `compatibility_date: "2025-10-01"`, `compatibility_flags: ["nodejs_compat"]`, `assets: { directory: "./dist/client", binding: "ASSETS", not_found_handling: "single-page-application", run_worker_first: ["/api/*"] }`, `d1_databases: [{ binding: "DB", database_name: "padilhas", migrations_dir: "migrations" }]` (**sem `database_id`**: o `wrangler deploy` do Cloudflare cria o banco sozinho no primeiro deploy, que é feito pelo painel *Workers & Pages → Create → Import repository*; confira que o `wrangler` instalado é 4.x com provisionamento automático) e `vars` com `TURNSTILE_SITE_KEY` (a chave de teste `1x00000000000000000000AA`), `VAPID_PUBLIC_KEY` e `VAPID_SUBJECT`. O `.gitignore` cobre `node_modules`, `dist`, `.wrangler`, `.dev.vars`, `.env*`, `test-results`, `.superpowers/` e `scripts/saida/`.
 - [ ] **Step 2:** Escreva o teste que falha, `test/saude.test.ts`: `GET /api/saude` responde 200 com `{ ok: true }`.
 - [ ] **Step 3:** Rode `npm test -- saude`. Deve falhar porque a rota não existe.
 - [ ] **Step 4:** Crie a rota `GET /api/saude` em `src/worker/rotas/saude.ts` e monte-a em `index.ts`. O `main.tsx` renderiza `<p>Barbearia dos Padilhas</p>`.
-- [ ] **Step 5:** `npm test` deve passar e `npm run build` deve gerar `dist/client/index.html`.
+- [ ] **Step 5:** `npm test` deve passar e `npm run build` deve gerar `dist/client/index.html`. Também `npx wrangler deploy --dry-run` deve terminar sem erro.
 - [ ] **Step 6:** Commit com "Esqueleto: Worker Hono, Vite e testes".
 
 ### Task 2: Banco de dados (migração 0001)
@@ -106,7 +106,7 @@ docs/IMPLANTACAO.md  docs/WHATSAPP.md
 
 - [ ] **Step 1:** Escreva o teste que falha, `test/banco.test.ts`. Ele confere que as 11 tabelas existem (`sqlite_master`) e que inserir um atendimento com `status='outro'` falha (CHECK).
 - [ ] **Step 2:** Rode `npm test -- banco` e confira que falha.
-- [ ] **Step 3:** Escreva a migração e os tipos.
+- [ ] **Step 3:** Escreva a migração e os tipos. Acrescente `src/worker/db/migrar.ts` com `aplicarMigracoes(db): Promise<void>`: as migrações de `migrations/*.sql` entram no bundle (import `?raw` do Vite ou um módulo gerado) e ficam registradas na tabela `_migracoes(nome PRIMARY KEY, aplicada_em)`. O Worker chama essa função uma vez por instância, antes da primeira rota `/api/*`, para o banco criado pelo painel ficar pronto sem comando manual. Teste: chamar duas vezes não dá erro, e `_migracoes` tem 1 linha.
 - [ ] **Step 4:** `npm test` deve passar.
 - [ ] **Step 5:** Commit com "Banco: migração inicial".
 
@@ -190,7 +190,7 @@ docs/IMPLANTACAO.md  docs/WHATSAPP.md
 - Modify: `src/worker/index.ts`
 
 **Interfaces:**
-- Produces: `cabecalhos()` (em toda resposta: `Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`, `Strict-Transport-Security: max-age=31536000`) · `conferirOrigem()` (POST, PUT, PATCH e DELETE em `/api/*` sem `Origin` igual a `env.ORIGEM` → 403) · `exigirLogin()` (põe `c.var.usuario`, ou responde 401) · `exigirDono()` (403 se `papel !== 'dono'`) · `podeVerAgenda(usuario, usuarioIdAlvo): boolean`
+- Produces: `cabecalhos()` (em toda resposta: `Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`, `Strict-Transport-Security: max-age=31536000`) · `conferirOrigem()` (POST, PUT, PATCH e DELETE em `/api/*` sem `Origin` igual à origem da própria requisição, `new URL(c.req.url).origin` → 403. Assim funciona no endereço `workers.dev` e num domínio próprio, sem configuração) · `exigirLogin()` (põe `c.var.usuario`, ou responde 401) · `exigirDono()` (403 se `papel !== 'dono'`) · `podeVerAgenda(usuario, usuarioIdAlvo): boolean`
 
 - [ ] **Step 1:** Escreva os testes que falham: `/api/saude` traz os 4 cabeçalhos. `POST /api/auth/entrar` com `Origin: https://malicioso.com` → 403. Uma rota de teste montada com `exigirDono` responde 403 ao barbeiro, 200 ao dono e 401 sem cookie.
 - [ ] **Step 2:** Rode e confira que falha.
@@ -367,18 +367,18 @@ docs/IMPLANTACAO.md  docs/WHATSAPP.md
 - [ ] **Step 6:** `npm run build` e `npm test` devem passar. Confira cada tela no celular (`npm run dev`, Playwright num iPhone 13 emulado) contra `docs/telas/*.png`.
 - [ ] **Step 7:** Commit com "Telas do dono: serviços, horários e folgas, resumo, equipe e clientes".
 
-### Task 16: Implantação, scripts e revisão de segurança
+### Task 16: Primeiro acesso, implantação e revisão de segurança
 
 **Files:**
-- Create: `scripts/criar-dono.mjs`, `scripts/nova-senha.mjs`, `docs/IMPLANTACAO.md`, `docs/WHATSAPP.md`, `test/scripts.test.ts`
+- Create: `src/worker/rotas/primeiro-acesso.ts`, `src/app/painel/PrimeiroAcesso.tsx`, `docs/IMPLANTACAO.md`, `docs/WHATSAPP.md`, `test/primeiro-acesso.test.ts`
 
 **Interfaces:**
-- Produces: `node scripts/criar-dono.mjs --nome "Padilha" --usuario padilha` → imprime a senha provisória gerada (16 caracteres) e grava `scripts/saida/criar-dono.sql` (no `.gitignore`), com o usuário dono, o expediente seg–sáb 9–19 almoço 12–13 e os serviços de exemplo (Corte 30 min, Barba 20 min, Corte + Barba 50 min, preços 0 até o dono ajustar), para rodar com `wrangler d1 execute padilhas --remote --file=...`. `scripts/nova-senha.mjs --usuario X` gera o SQL que troca o hash e apaga as sessões. Os dois usam `gerarHashSenha` (Task 5).
+- Produces: `GET /api/primeiro-acesso` → `{ disponivel: boolean }` (verdadeiro só se **não existe nenhum usuário**) · `POST /api/primeiro-acesso {codigo, nome, usuario, senha}`: só funciona se não houver usuário **e** `codigo` for igual ao secret `CODIGO_INSTALACAO` (comparação em tempo constante, limite de 5 tentativas/hora por IP). Cria o `dono` com expediente seg–sáb, 9–19, almoço 12–13, e os serviços de exemplo (Corte 30 min, Barba 20 min, Corte + Barba 50 min, preço 0 até o dono ajustar). Depois de existir um usuário, sempre 404. A tela `/painel/primeiro-acesso` tem os 4 campos. `Env` ganha `CODIGO_INSTALACAO: string`. Senha esquecida do dono: a mesma rota não serve, e `docs/IMPLANTACAO.md` explica como redefinir pelo console D1 do painel do Cloudflare com o hash gerado por `node scripts/hash-senha.mjs` (crie esse script de uma linha que usa `gerarHashSenha`).
 
-- [ ] **Step 1:** Escreva o teste que falha: o SQL gerado por `criar-dono`, aplicado no D1 de teste, permite entrar com a senha impressa, e `nova-senha` invalida a anterior.
-- [ ] **Step 2:** Implemente os scripts. `npm test` deve passar.
-- [ ] **Step 3:** Escreva `docs/IMPLANTACAO.md`, passo a passo para leigo: deixar o repositório privado, criar o D1 (`npx wrangler d1 create padilhas` e colar o id no `wrangler.jsonc`), criar o Turnstile no painel do Cloudflare (domínio do Worker), gerar as chaves VAPID (`npx web-push generate-vapid-keys`), `wrangler secret put TURNSTILE_SECRET` e `VAPID_PRIVATE_KEY`, preencher as `vars`, configurar no Cloudflare o **Build command** `npm run build` e o **Deploy command** `npx wrangler deploy`, aplicar as migrações (`npx wrangler d1 migrations apply padilhas --remote`), criar o dono, ativar o Time Travel (já vem ligado) e conectar um domínio próprio (opcional).
+- [ ] **Step 1:** Escreva os testes que falham: sem usuários e com o código certo → 201 e o login funciona. Com o código errado → 403. Segunda chamada, já com o dono criado → 404. Sem `CODIGO_INSTALACAO` configurado → 404.
+- [ ] **Step 2:** Implemente. `npm test` deve passar.
+- [ ] **Step 3:** Escreva `docs/IMPLANTACAO.md`, passo a passo para leigo **pelo painel do Cloudflare**: deixar o repositório privado; *Workers & Pages → Create → Import a repository* com o repositório `barbearia`, a branch de produção, Build command `npm run build` e Deploy command `npx wrangler deploy`; depois do primeiro deploy, em *Settings → Variables and Secrets*, criar os secrets `CODIGO_INSTALACAO`, `TURNSTILE_SECRET` e `VAPID_PRIVATE_KEY` e as variáveis `TURNSTILE_SITE_KEY`, `VAPID_PUBLIC_KEY` e `VAPID_SUBJECT`; criar o Turnstile em *Turnstile → Add widget*; gerar as chaves VAPID (em qualquer site/terminal: `npx web-push generate-vapid-keys`); abrir `/painel/primeiro-acesso` e criar o dono; Time Travel do D1 (já vem ligado); domínio próprio (opcional).
 - [ ] **Step 4:** Escreva `docs/WHATSAPP.md`: configurar a mensagem de saudação e a de ausência no WhatsApp Business, com o texto "Olá! 👋 Agende seu horário na Barbearia dos Padilhas: {link}", a limitação dos 14 dias e como pôr o link na bio do Instagram.
 - [ ] **Step 5:** Rode a revisão de segurança (skill `security-review`) sobre a branch inteira e corrija o que ela apontar, com teste.
 - [ ] **Step 6:** `npm test`, `npm run e2e` e `npm run build` devem passar.
-- [ ] **Step 7:** Commit com "Implantação, scripts do dono e revisão de segurança".
+- [ ] **Step 7:** Commit com "Primeiro acesso, implantação e revisão de segurança".
