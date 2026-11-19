@@ -59,7 +59,9 @@ export default function Clientes() {
         {erro && !apagando ? <Aviso>{erro}</Aviso> : null}
         {lista.carregando && !lista.dados ? <Carregando /> : null}
         {lista.dados && lista.dados.clientes.length === 0 ? (
-          <div className="cartao p-5 text-center text-[15px] text-texto-suave">Nenhum cliente encontrado.</div>
+          <div className="cartao p-5 text-center text-[15px] text-texto-suave">
+            {termo ? "Nenhum cliente encontrado." : "Digite um nome ou celular para buscar."}
+          </div>
         ) : null}
         {(lista.dados?.clientes ?? []).map((c) => (
           <div key={c.id} className="cartao flex items-center gap-3 p-3.5">

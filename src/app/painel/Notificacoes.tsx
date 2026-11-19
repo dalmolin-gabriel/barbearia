@@ -59,6 +59,10 @@ export default function Notificacoes({ soSeInativas = false }: { soSeInativas?: 
         return;
       }
       const { chave } = await api<{ chave: string }>("/api/push/chave");
+      if (!chave) {
+        setErro("As notificações ainda não foram configuradas no servidor.");
+        return;
+      }
       const reg = await navigator.serviceWorker.ready;
       const sub =
         (await reg.pushManager.getSubscription()) ??

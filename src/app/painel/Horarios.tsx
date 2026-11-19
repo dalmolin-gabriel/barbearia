@@ -92,7 +92,7 @@ export default function Horarios() {
     try {
       await api(`/api/expediente/${encodeURIComponent(usuarioId)}`, {
         metodo: "PUT",
-        corpo: { dias: dias.map((d) => ({ ...d, aberto: d.aberto ? 1 : 0 })) },
+        corpo: { dias: dias.map((d) => ({ ...d, aberto: !!d.aberto })) },
       });
       await expediente.recarregar();
     } catch (e) {
