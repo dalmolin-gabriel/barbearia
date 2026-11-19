@@ -277,7 +277,7 @@ docs/IMPLANTACAO.md  docs/WHATSAPP.md
   - `GET /api/expediente?usuarioId=` (o barbeiro pode ler o próprio) · `PUT /api/expediente/:usuarioId` com os 7 dias
   - `GET /api/equipe` · `POST /api/equipe {nome, usuario, senha}` (cria `barbeiro` com expediente padrão de seg a sáb, 9–19, almoço 12–13) · `PUT /api/equipe/:id {nome?, ativo?, senha?}`. Desativar ou trocar a senha chama `apagarSessoesDoUsuario`. O dono não pode desativar a si mesmo.
   - `GET /api/resumo?mes=AAAA-MM` → `{ faturamento_centavos, atendidos, faltas, cancelados, porBarbeiro: [{id, nome, faturamento_centavos, atendidos}] }`. O mês é contado no fuso de Brasília.
-  - `GET /api/clientes?busca=` (nome ou telefone, no máximo 20) · `DELETE /api/clientes/:id` → anonimiza: `nome='Cliente removido'`, `telefone='removido:'||id`, `removido=1`. Os atendimentos continuam.
+  - `GET /api/clientes?busca=` (nome ou telefone, no máximo 20) · `DELETE /api/clientes/:id` → anonimiza: `nome='Cliente removido'`, `telefone=NULL`, `removido=1`. Os atendimentos continuam.
   - Senha nova com no mínimo **8** caracteres.
 
 - [ ] **Step 1:** Escreva os testes que falham:
