@@ -4,7 +4,8 @@ Data: 19/11/2026 · Status: rascunho para aprovação
 
 ## 1. Para que serve
 
-Um sistema de agendamento para **uma barbearia pequena: o pai (dono) e o filho**. Hoje tudo é
+Um sistema de agendamento para **uma barbearia pequena: hoje o pai (dono) e o filho**, com a possibilidade
+de cadastrar mais barbeiros no futuro. Hoje tudo é
 pelo WhatsApp. O dono já testou outros aplicativos e não se adaptou, não por culpa deles, mas
 porque tem dificuldade de mudar a rotina. Este sistema vai ser **apresentado e vendido** a ele.
 
@@ -32,7 +33,7 @@ Referências:
 
 ## 2. Quem usa e o que cada um pode
 
-| Ação | Cliente | Filho | Pai (dono) |
+| Ação | Cliente | Barbeiro (filho e futuros) | Pai (dono) |
 |---|---|---|---|
 | Ver serviços e preços, marcar horário | Sim | — | — |
 | Ver a própria agenda (dia, semana, qualquer data) | — | Sim | Sim |
@@ -44,7 +45,8 @@ Referências:
 | Cadastrar e editar serviços (nome, duração, preço) | — | Não | Sim |
 | Editar o horário de trabalho de cada barbeiro | — | Não | Sim |
 | Ver faturamento e número de atendimentos do mês | — | Não | Sim |
-| Criar a conta do filho e trocar a senha dele | — | Não | Sim |
+| Cadastrar barbeiros (filho e novos funcionários), desativar e trocar senha | — | Não | Sim |
+| Receber notificação de agendamento novo ou cancelado | — | Da própria agenda | De todos |
 | Apagar os dados de um cliente (LGPD) | — | Não | Sim |
 
 Toda permissão é conferida **no servidor**, em toda requisição. Esconder botão não conta como
@@ -68,7 +70,8 @@ Mesmo fluxo do `barbearia-bem-gerida`, em 3 etapas, no celular:
 1. **Serviços:** lista com nome, duração e preço. O cliente escolhe um ou mais e toca em
    "Continuar". A duração total é a soma.
 2. **Profissional, dia e hora:**
-   - Fotos/iniciais dos barbeiros, com a opção **"Sem preferência"** (fica com quem estiver livre).
+   - Fotos/iniciais dos barbeiros ativos. **O cliente é obrigado a escolher um barbeiro**: não existe
+     opção "Sem preferência" (decisão do usuário).
    - **Calendário do mês sempre visível** na tela, no lugar da faixa horizontal de dias da referência.
      Só os dias da **janela aberta** (4.2) dá para tocar. O resto fica cinza. Dia sem vaga ou
      fechado aparece apagado ou riscado. Se a janela atravessar o mês, aparecem setas para trocar de mês.
@@ -95,15 +98,15 @@ antecedência e ele perdeu a organização.
 - Exemplo: na terça, 1º/12, o cliente vê de 1º a 6/12. No sábado, 5/12, às 18h, abre de 7 a 13/12.
 - O dia e a hora de abertura ficam guardados na configuração (padrão: sábado, 18h). Mudar exige
   um ajuste técnico, sem tela no painel *(minha decisão)*.
-- **A regra vale só para o cliente.** Pai e filho marcam em qualquer data.
+- **A regra vale só para o cliente.** Os barbeiros e o pai marcam em qualquer data.
 - O servidor aplica a mesma regra ao receber um agendamento. Não dá para burlar mexendo no navegador.
 
-### 4.3 Painel do barbeiro (pai e filho, com login)
+### 4.3 Painel do barbeiro (pai e demais barbeiros, com login)
 
 Pensado para quem não gosta de app: botões grandes, poucas telas, tudo no celular.
 
 - **Agenda** (tela inicial): calendário do mês no topo, livre para navegar para qualquer mês. Abaixo,
-  a lista do dia escolhido: horário, cliente, serviço e situação. O pai alterna entre "Minha", "Filho"
+  a lista do dia escolhido: horário, cliente, serviço e situação. O pai alterna entre "Minha", cada barbeiro
   e "Todos". Toques rápidos em cada atendimento: **Confirmou · Cancelou · Atendido · Faltou** e
   **WhatsApp**. Cancelado libera o horário.
 - **+ Marcar cliente:** nome, celular (opcional), serviço, barbeiro (só o pai escolhe), dia e hora.
@@ -125,7 +128,9 @@ Pensado para quem não gosta de app: botões grandes, poucas telas, tudo no celu
     fim e intervalo de almoço.
   - **Resumo do mês:** atendimentos e faturamento do mês, total e por barbeiro, com setas para
     meses anteriores. Faturamento = soma dos preços dos atendimentos marcados como **Atendido**.
-  - **Equipe:** criar a conta do filho e trocar a senha dele.
+  - **Equipe:** cadastrar barbeiros (nome, foto opcional, usuário e senha provisória), editar o horário
+    de cada um, trocar a senha e **desativar** quem sair. Barbeiro desativado some da tela do cliente,
+    não loga mais e mantém o histórico. Não há limite de barbeiros.
   - **Clientes:** buscar pelo nome ou celular e apagar os dados de um cliente.
 
 ### 4.4 Situações de um atendimento
@@ -133,6 +138,31 @@ Pensado para quem não gosta de app: botões grandes, poucas telas, tudo no celu
 `marcado` (padrão) → `confirmado` → `atendido`, ou `cancelado` ou `faltou`. Só `marcado` e
 `confirmado` ocupam a agenda. O preço e a duração são **copiados para o atendimento** na hora
 de marcar: se o pai mudar o preço depois, o histórico não muda.
+
+### 4.5 Notificações no celular (como app)
+
+- O sistema é um **PWA**: pode ser instalado na tela inicial com o ícone do logo e abre como app.
+- **Web Push** (gratuito): ao ser criado ou cancelado um agendamento, **pelo cliente**, chega uma
+  notificação, por exemplo "📅 Novo horário: João · Corte · sex 20/11 às 14h". Ao tocar, abre o atendimento.
+- Quem recebe: cada barbeiro, os da **própria agenda**. O pai recebe **todos**.
+- Cada aparelho ativa as notificações no painel (botão "Ativar notificações"). Uma pessoa pode ter
+  vários aparelhos. Inscrições que o navegador recusar (expiradas) são apagadas sozinhas.
+- No **iPhone**, só funciona com o app instalado na tela inicial (iOS 16.4 ou mais novo). No Android,
+  funciona direto. O painel mostra essa instrução quando detectar iPhone sem instalação.
+- Técnica: service worker, tabela de inscrições push, chaves VAPID guardadas como *secret*, envio
+  pelo Worker com `ctx.waitUntil`, para não atrasar a resposta ao cliente.
+
+### 4.6 Divulgação: link na bio e resposta automática no WhatsApp
+
+- O sistema tem **um endereço só** (ex.: `barbeariadospadilhas.com.br` ou o endereço gratuito
+  `...workers.dev`), e a página inicial já é o agendamento. Ele vai na **bio do Instagram**.
+- A **mensagem automática** no WhatsApp ("Olá! Agende seu horário aqui: [link]") é configurada
+  **no próprio WhatsApp Business do dono**, sem programação e de graça. Não faz parte do código.
+  A entrega inclui um passo a passo de configuração.
+- Limitação do WhatsApp Business que precisa ser explicada ao dono: a **mensagem de saudação** só
+  vai na primeira conversa ou quando o cliente ficou 14 dias sem falar. Quem conversa toda semana não
+  recebe sempre. Alternativa: a **mensagem de ausência**, ligada nos horários em que ele está atendendo.
+  Isso exige que o dono use o **WhatsApp Business**, e não o WhatsApp comum.
 
 ## 5. Como é construído (decidido)
 
@@ -167,7 +197,7 @@ O usuário exigiu os processos de segurança adequados por ser um produto vendid
   (`wrangler`), feito por quem mantém o sistema.
 
 **Permissões**
-- Toda rota do painel confere a sessão e o papel (`dono` ou `barbeiro`). O filho só lê e altera
+- Toda rota do painel confere a sessão e o papel (`dono` ou `barbeiro`). Um barbeiro que não é dono só lê e altera
   atendimentos e bloqueios da agenda dele. Isso tem teste automático.
 
 **Agendamento público**
@@ -202,7 +232,7 @@ O usuário exigiu os processos de segurança adequados por ser um produto vendid
 
 **Antes de entregar**
 - Testes automáticos (Vitest no ambiente dos Workers): regra da semana, cálculo de horários, horário
-  duplicado, permissões do filho e login/bloqueio.
+  duplicado, permissões do barbeiro e login/bloqueio.
 - Revisão de segurança do código inteiro.
 
 ## 7. Primeira configuração
@@ -210,8 +240,8 @@ O usuário exigiu os processos de segurança adequados por ser um produto vendid
 - Ao publicar, o banco nasce vazio. Um comando técnico cria a conta do pai (usuário e senha
   provisória) e os serviços de exemplo (Corte 30 min, Barba 20 min, Corte + Barba 50 min, preços
   a definir), que o pai ajusta no painel.
-- O pai cria a conta do filho pelo painel.
-- O link do agendamento vai na bio do Instagram e na mensagem de saudação do WhatsApp Business.
+- O pai cria a conta do filho (e de futuros barbeiros) pelo painel.
+- Divulgação: ver seção 4.6.
 
 ## 8. Identidade visual: Barbearia dos Padilhas
 
