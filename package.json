@@ -11,6 +11,7 @@
     "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
+    "@block65/webcrypto-web-push": "2.0.0",
     "hono": "4.13.19",
     "react": "19.3.1",
     "react-dom": "19.3.1",

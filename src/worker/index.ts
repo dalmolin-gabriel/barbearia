@@ -8,6 +8,7 @@ import { clientes } from "./rotas/clientes";
 import { equipe } from "./rotas/equipe";
 import { expediente } from "./rotas/expediente";
 import { publico } from "./rotas/publico";
+import { push } from "./rotas/push";
 import { resumo } from "./rotas/resumo";
 import { saude } from "./rotas/saude";
 import { servicos } from "./rotas/servicos";
@@ -38,6 +39,7 @@ app.use("/api/*", async (c, proximo) => {
 app.route("/api/saude", saude);
 app.route("/api/auth", auth);
 app.route("/api/publico", publico);
+app.route("/api/push", push);
 app.route("/api/agenda", agenda);
 app.route("/api/atendimentos", atendimentos);
 app.route("/api/bloqueios", bloqueios);
