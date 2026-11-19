@@ -1,7 +1,9 @@
 import { Hono } from "hono";
 import { aplicarMigracoes } from "./db/migrar";
 import type { AppEnv } from "./env";
+import { agenda, atendimentos } from "./rotas/agenda";
 import { auth } from "./rotas/auth";
+import { bloqueios } from "./rotas/bloqueios";
 import { publico } from "./rotas/publico";
 import { saude } from "./rotas/saude";
 import { cabecalhos, conferirOrigem } from "./seguranca/middleware";
@@ -31,5 +33,8 @@ app.use("/api/*", async (c, proximo) => {
 app.route("/api/saude", saude);
 app.route("/api/auth", auth);
 app.route("/api/publico", publico);
+app.route("/api/agenda", agenda);
+app.route("/api/atendimentos", atendimentos);
+app.route("/api/bloqueios", bloqueios);
 
 export default { fetch: app.fetch };

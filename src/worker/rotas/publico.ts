@@ -7,6 +7,8 @@ import { z } from "zod";
 import { hhmm, instanteUTC } from "../../shared/tempo";
 import { normalizarTelefone } from "../../shared/telefone";
 import {
+  buscarServicos,
+  type ServicoLinha,
   contarFuturosDoCliente,
   diasAbertos,
   horariosLivres,
@@ -26,13 +28,6 @@ const MSG_INVALIDO = "Dados inválidos.";
 const MAX_SERVICOS = 10;
 const MAX_FUTUROS = 2;
 
-type ServicoLinha = {
-  id: string;
-  nome: string;
-  duracao_min: number;
-  preco_centavos: number;
-};
-
 const ipDe = (c: Context<AppEnv>) =>
   c.req.header("CF-Connecting-IP") ?? "desconhecido";
 
@@ -41,29 +36,6 @@ async function limitarConsulta(c: Context<AppEnv>) {
   if (await consumirLimite(c.env.DB, `consulta:${ipDe(c)}`, 120, 60))
     return null;
   return c.json({ erro: "Muitas consultas. Tente de novo em instantes." }, 429);
-}
-
-/** Serviços ativos pedidos, na ordem pedida; null se algum não existir, estiver inativo ou repetido. */
-async function buscarServicos(
-  db: D1Database,
-  ids: string[],
-): Promise<ServicoLinha[] | null> {
-  if (
-    ids.length === 0 ||
-    ids.length > MAX_SERVICOS ||
-    new Set(ids).size !== ids.length
-  )
-    return null;
-  const marcas = ids.map(() => "?").join(",");
-  const { results } = await db
-    .prepare(
-      `SELECT id, nome, duracao_min, preco_centavos FROM servicos WHERE ativo = 1 AND id IN (${marcas})`,
-    )
-    .bind(...ids)
-    .all<ServicoLinha>();
-  const porId = new Map(results.map((s) => [s.id, s]));
-  const ordenados = ids.map((id) => porId.get(id));
-  return ordenados.every((s): s is ServicoLinha => !!s) ? ordenados : null;
 }
 
 const barbeiroAtivo = (db: D1Database, id: string) =>

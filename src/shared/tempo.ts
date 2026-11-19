@@ -62,3 +62,8 @@ export function hhmm(minutos: number): string {
   const m = minutos % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
+
+/** Data AAAA-MM-DD que existe no calendário (rejeita 2026-02-30). */
+export function dataValida(data: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(data) && new Date(dataParaMs(data)).toISOString().slice(0, 10) === data;
+}

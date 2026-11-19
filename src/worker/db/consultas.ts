@@ -59,6 +59,8 @@ export type NovoAtendimento = {
   agora: string; // ISO UTC
   /** Só o agendamento público informa: máximo de atendimentos futuros ativos do cliente, checado no mesmo SQL. */
   limitePorCliente?: number;
+  /** Só o painel usa, e só quando a equipe confirmou o aviso de horário bloqueado: ignora `bloqueios`. */
+  ignorarBloqueios?: boolean;
 };
 
 /** Quantos atendimentos futuros ativos (`marcado`/`confirmado`) o cliente tem. */
@@ -95,9 +97,9 @@ export async function inserirSemConflito(
          SELECT 1 FROM atendimentos
            WHERE usuario_id = ?3 AND status IN ('marcado', 'confirmado') AND inicio < ?8 AND fim > ?7
        )
-       AND NOT EXISTS (
+       AND (?12 = 1 OR NOT EXISTS (
          SELECT 1 FROM bloqueios WHERE (usuario_id = ?3 OR usuario_id IS NULL) AND inicio < ?8 AND fim > ?7
-       )
+       ))
        AND (?11 IS NULL OR (
          SELECT COUNT(*) FROM atendimentos
            WHERE cliente_id = ?2 AND status IN ('marcado', 'confirmado') AND inicio > ?10
@@ -115,6 +117,7 @@ export async function inserirSemConflito(
       a.origem,
       a.agora,
       a.limitePorCliente ?? null,
+      a.ignorarBloqueios ? 1 : 0,
     )
     .run();
   return r.meta.changes === 1;
@@ -182,4 +185,36 @@ export async function horariosLivres(
     ocupados: await ocupadosDoDia(db, usuarioId, data),
     agoraMin: hoje.data === data ? hoje.minutos : null,
   });
+}
+
+export type ServicoLinha = {
+  id: string;
+  nome: string;
+  duracao_min: number;
+  preco_centavos: number;
+};
+
+const MAX_SERVICOS = 10;
+
+/** Serviços ativos pedidos, na ordem pedida; null se algum não existir, estiver inativo ou repetido. */
+export async function buscarServicos(
+  db: D1Database,
+  ids: string[],
+): Promise<ServicoLinha[] | null> {
+  if (
+    ids.length === 0 ||
+    ids.length > MAX_SERVICOS ||
+    new Set(ids).size !== ids.length
+  )
+    return null;
+  const marcas = ids.map(() => "?").join(",");
+  const { results } = await db
+    .prepare(
+      `SELECT id, nome, duracao_min, preco_centavos FROM servicos WHERE ativo = 1 AND id IN (${marcas})`,
+    )
+    .bind(...ids)
+    .all<ServicoLinha>();
+  const porId = new Map(results.map((s) => [s.id, s]));
+  const ordenados = ids.map((id) => porId.get(id));
+  return ordenados.every((s): s is ServicoLinha => !!s) ? ordenados : null;
 }
