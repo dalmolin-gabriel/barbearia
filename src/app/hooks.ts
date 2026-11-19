@@ -15,6 +15,9 @@ export function useCarregar<T>(buscar: () => Promise<T>, deps: DependencyList): 
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const versao = useRef(0);
+  // Deps da última busca disparada: no render em que as deps mudam (antes do efeito rodar)
+  // já vale "carregando", para a tela não mostrar um instante os dados da busca anterior.
+  const depsDaBusca = useRef(deps);
   const buscarRef = useRef(buscar);
   buscarRef.current = buscar;
 
@@ -34,12 +37,14 @@ export function useCarregar<T>(buscar: () => Promise<T>, deps: DependencyList): 
   }, []);
 
   useEffect(() => {
+    depsDaBusca.current = deps;
     setCarregando(true);
     void recarregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
-  return { dados, erro, carregando, recarregar };
+  const desatualizado = deps.some((d, i) => !Object.is(d, depsDaBusca.current[i]));
+  return { dados, erro, carregando: carregando || desatualizado, recarregar };
 }
 
 /** Roda `fn` a cada `ms` e quando a aba volta ao foco. */
