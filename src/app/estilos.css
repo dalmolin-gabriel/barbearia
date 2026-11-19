@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Bebas Neue";
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fontes/bebas-neue-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fontes/inter-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fontes/inter-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fontes/inter-latin-600-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fontes/inter-latin-700-normal.woff2") format("woff2");
+}
+
+@layer base {
+  html {
+    background: #0b0b0b;
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-fundo font-inter text-texto antialiased;
+    margin: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button {
+    font: inherit;
+  }
+  input {
+    font-size: 16px; /* evita o zoom automático do iPhone */
+  }
+}
+
+@layer components {
+  .bebas {
+    @apply font-bebas font-normal tracking-[0.04em];
+  }
+  .cartao {
+    @apply rounded-[14px] border border-borda bg-superficie;
+  }
+  .campo {
+    @apply w-full rounded-[10px] border border-borda bg-fundo p-3.5 text-base text-texto outline-none placeholder:text-apagado focus:border-ouro;
+  }
+  .rotulo {
+    @apply mb-1.5 text-sm font-semibold;
+  }
+  .pilula {
+    @apply rounded-full bg-superficie-alta px-2.5 py-1 text-xs font-semibold;
+  }
+}
+
+@keyframes subir {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes aparecer {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.anima-subir {
+  animation: subir 0.22s ease-out;
+}
+.anima-aparecer {
+  animation: aparecer 0.18s ease-out;
+}
