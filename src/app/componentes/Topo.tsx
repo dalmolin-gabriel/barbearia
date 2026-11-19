@@ -2,13 +2,26 @@ import type { ReactNode } from "react";
 import { Logo } from "./Logo";
 
 /** Cabeçalho das telas do painel: logo, linha pequena e título em Bebas. */
-export function Topo({ sub, titulo, direita }: { sub?: ReactNode; titulo: ReactNode; direita?: ReactNode }) {
+export function Topo({
+  sub,
+  titulo,
+  direita,
+  subAbaixo = false,
+}: {
+  sub?: ReactNode;
+  titulo: ReactNode;
+  direita?: ReactNode;
+  /** Linha pequena depois do título (Hoje) em vez de antes. */
+  subAbaixo?: boolean;
+}) {
+  const linhaSub = sub ? <div className="text-[13px] text-texto-suave">{sub}</div> : null;
   return (
     <header className="flex items-center gap-3 px-5 pb-3 pt-[18px]">
       <Logo tamanho={48} />
       <div className="min-w-0 flex-1">
-        {sub ? <div className="text-[13px] text-texto-suave">{sub}</div> : null}
+        {subAbaixo ? null : linhaSub}
         <h1 className="bebas whitespace-nowrap text-[30px] leading-none">{titulo}</h1>
+        {subAbaixo ? <div className="mt-0.5 text-sm text-texto-suave">{sub}</div> : null}
       </div>
       {direita}
     </header>
