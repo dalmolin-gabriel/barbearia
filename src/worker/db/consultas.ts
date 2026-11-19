@@ -1,8 +1,17 @@
 // Consultas compartilhadas da agenda: horários ocupados e gravação sem conflito.
 
 import { diasAbertosCliente } from "../../shared/janela";
-import { diaSemanaDe, instanteUTC, partesLocais, somarDias } from "../../shared/tempo";
-import { calcularVagas, type ExpedienteDia, type Intervalo } from "../../shared/vagas";
+import {
+  diaSemanaDe,
+  instanteUTC,
+  partesLocais,
+  somarDias,
+} from "../../shared/tempo";
+import {
+  calcularVagas,
+  type ExpedienteDia,
+  type Intervalo,
+} from "../../shared/vagas";
 
 const MS_MINUTO = 60_000;
 
@@ -10,7 +19,11 @@ const MS_MINUTO = 60_000;
  * Intervalos (em minutos desde 00:00 de Brasília) ocupados no dia: atendimentos `marcado`/`confirmado`
  * do barbeiro e bloqueios dele **e** da barbearia toda (`usuario_id IS NULL`), cortados ao dia.
  */
-export async function ocupadosDoDia(db: D1Database, usuarioId: string, data: string): Promise<Intervalo[]> {
+export async function ocupadosDoDia(
+  db: D1Database,
+  usuarioId: string,
+  data: string,
+): Promise<Intervalo[]> {
   const inicioDia = instanteUTC(data, 0);
   const fimDia = instanteUTC(somarDias(data, 1), 0);
   const ini = inicioDia.toISOString();
@@ -25,8 +38,12 @@ export async function ocupadosDoDia(db: D1Database, usuarioId: string, data: str
     )
     .bind(usuarioId, ini, fim)
     .all<{ inicio: string; fim: string }>();
-  const dia = (iso: string) => Math.round((Date.parse(iso) - inicioDia.getTime()) / MS_MINUTO);
-  return results.map((r) => ({ ini: Math.max(0, dia(r.inicio)), fim: Math.min(1440, dia(r.fim)) }));
+  const dia = (iso: string) =>
+    Math.round((Date.parse(iso) - inicioDia.getTime()) / MS_MINUTO);
+  return results.map((r) => ({
+    ini: Math.max(0, dia(r.inicio)),
+    fim: Math.min(1440, dia(r.fim)),
+  }));
 }
 
 export type NovoAtendimento = {
@@ -40,14 +57,35 @@ export type NovoAtendimento = {
   fim: string; // ISO UTC
   origem: "online" | "painel";
   agora: string; // ISO UTC
+  /** Só o agendamento público informa: máximo de atendimentos futuros ativos do cliente, checado no mesmo SQL. */
+  limitePorCliente?: number;
 };
 
+/** Quantos atendimentos futuros ativos (`marcado`/`confirmado`) o cliente tem. */
+export async function contarFuturosDoCliente(
+  db: D1Database,
+  clienteId: string,
+  agoraIso: string,
+): Promise<number> {
+  const r = await db
+    .prepare(
+      "SELECT COUNT(*) AS n FROM atendimentos WHERE cliente_id = ? AND status IN ('marcado', 'confirmado') AND inicio > ?",
+    )
+    .bind(clienteId, agoraIso)
+    .first<{ n: number }>();
+  return r?.n ?? 0;
+}
+
 /**
- * Grava o atendimento só se o barbeiro não tiver outro `marcado`/`confirmado` sobrepondo o horário.
- * Verificação e gravação acontecem em UM comando SQL (atômico no D1): duas requisições paralelas
- * para o mesmo horário nunca gravam as duas. Devolve `false` quando houve conflito.
+ * Grava o atendimento só se o barbeiro não tiver outro `marcado`/`confirmado` nem bloqueio (dele ou da
+ * barbearia toda) sobrepondo o horário e, quando `limitePorCliente` vem, se o cliente ainda não atingiu
+ * o limite. Verificações e gravação acontecem em UM comando SQL (atômico no D1): requisições paralelas
+ * nunca gravam em conflito. Devolve `false` quando nada foi gravado.
  */
-export async function inserirSemConflito(db: D1Database, a: NovoAtendimento): Promise<boolean> {
+export async function inserirSemConflito(
+  db: D1Database,
+  a: NovoAtendimento,
+): Promise<boolean> {
   const r = await db
     .prepare(
       `INSERT INTO atendimentos
@@ -56,9 +94,28 @@ export async function inserirSemConflito(db: D1Database, a: NovoAtendimento): Pr
        WHERE NOT EXISTS (
          SELECT 1 FROM atendimentos
            WHERE usuario_id = ?3 AND status IN ('marcado', 'confirmado') AND inicio < ?8 AND fim > ?7
-       )`,
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM bloqueios WHERE (usuario_id = ?3 OR usuario_id IS NULL) AND inicio < ?8 AND fim > ?7
+       )
+       AND (?11 IS NULL OR (
+         SELECT COUNT(*) FROM atendimentos
+           WHERE cliente_id = ?2 AND status IN ('marcado', 'confirmado') AND inicio > ?10
+       ) < ?11)`,
     )
-    .bind(a.id, a.clienteId, a.usuarioId, a.servicosTxt, a.duracaoMin, a.precoCentavos, a.inicio, a.fim, a.origem, a.agora)
+    .bind(
+      a.id,
+      a.clienteId,
+      a.usuarioId,
+      a.servicosTxt,
+      a.duracaoMin,
+      a.precoCentavos,
+      a.inicio,
+      a.fim,
+      a.origem,
+      a.agora,
+      a.limitePorCliente ?? null,
+    )
     .run();
   return r.meta.changes === 1;
 }
@@ -72,12 +129,22 @@ type ExpedienteLinha = {
 };
 
 /** Datas (AAAA-MM-DD) que o cliente pode marcar agora, conforme a configuração de abertura. */
-export async function diasAbertos(db: D1Database, agora: Date): Promise<string[]> {
+export async function diasAbertos(
+  db: D1Database,
+  agora: Date,
+): Promise<string[]> {
   const { results } = await db
-    .prepare("SELECT chave, valor FROM config WHERE chave IN ('abertura_dia', 'abertura_minuto')")
+    .prepare(
+      "SELECT chave, valor FROM config WHERE chave IN ('abertura_dia', 'abertura_minuto')",
+    )
     .all<{ chave: string; valor: string }>();
-  const cfg = Object.fromEntries(results.map((r) => [r.chave, Number(r.valor)]));
-  return diasAbertosCliente(agora, { aberturaDia: cfg.abertura_dia ?? 6, aberturaMinuto: cfg.abertura_minuto ?? 1380 });
+  const cfg = Object.fromEntries(
+    results.map((r) => [r.chave, Number(r.valor)]),
+  );
+  return diasAbertosCliente(agora, {
+    aberturaDia: cfg.abertura_dia ?? 6,
+    aberturaMinuto: cfg.abertura_minuto ?? 1380,
+  });
 }
 
 /**
