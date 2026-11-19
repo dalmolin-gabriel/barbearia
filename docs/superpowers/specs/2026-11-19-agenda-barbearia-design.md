@@ -213,8 +213,30 @@ O usuário exigiu os processos de segurança adequados por ser um produto vendid
 - O pai cria a conta do filho pelo painel.
 - O link do agendamento vai na bio do Instagram e na mensagem de saudação do WhatsApp Business.
 
-## 8. Em aberto, para perguntar ao dono (não bloqueia a construção)
+## 8. Identidade visual: Barbearia dos Padilhas
 
-- Nome da barbearia, serviços, preços e durações reais.
+Logo: `docs/marca/logo-instagram.png` (foto do perfil do Instagram). Fundo preto, moldura e
+detalhes dourados, tesouras cruzadas num "telhado" dourado, faixa com "BARBEARIA" em branco
+espaçado, postes de barbeiro listrados de preto e dourado nas pontas e "DOS PADILHAS" com
+"PADILHAS" em dourado, letra grossa condensada e sombra.
+
+Cores (tiradas do logo):
+
+| Papel | Cor |
+|---|---|
+| Fundo principal | preto `#0B0B0B` |
+| Dourado (destaques, botões, dia escolhido) | `#D0B848` · tom escuro `#B8A030` |
+| Texto claro | `#E8E6E0` · secundário `#D0D0D0` |
+
+*(Minhas decisões:)* tema escuro como padrão, igual ao logo. O dourado aparece nos botões
+principais e no dia ou horário escolhido, e o texto fica em branco quebrado. Fontes do Google:
+**Bebas Neue** nos títulos (parecida com o "BARBEARIA"/"PADILHAS" do logo) e **Inter** no texto.
+A versão final do logo, recortada sem a moldura e em boa resolução, ainda falta. A imagem atual
+serve para o topo da página até chegar a definitiva. O contraste do dourado sobre o preto e do
+texto preto sobre o botão dourado precisa passar no WCAG AA.
+
+## 9. Em aberto, para perguntar ao dono (não bloqueia a construção)
+
+- Serviços, preços e durações reais.
 - Horário de cada um (inclusive sábado) e dias de folga.
-- Se tiver logo e cores, entram fixos no código.
+- Logo em alta resolução, se ele tiver.
