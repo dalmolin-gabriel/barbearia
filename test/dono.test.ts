@@ -222,6 +222,17 @@ describe("rotas do dono", () => {
       expect(j.porBarbeiro.find((b: any) => b.id === b2.id)).toMatchObject({ atendidos: 1, faturamento_centavos: 4000 });
     });
 
+    it("um dono não altera outro dono", async () => {
+      const outro = await criarUsuario("dono");
+      for (const corpo of [{ ativo: false }, { senha: "nova-senha-123" }, { nome: "X" }])
+        expect((await req(`/api/equipe/${outro.id}`, { metodo: "PUT", token: dono.token, corpo })).status).toBe(403);
+      const linha = await env.DB.prepare("SELECT ativo, senha_hash, nome FROM usuarios WHERE id = ?").bind(outro.id).first<any>();
+      expect(linha.ativo).toBe(1);
+      expect(linha.nome).toBe(`Nome ${outro.usuario}`);
+      expect(linha.senha_hash).not.toContain("nova");
+      expect((await req("/api/agenda?data=2026-11-10", { token: outro.token })).status).toBe(200);
+    });
+
     it("trocar a senha derruba a sessão; o dono não se desativa", async () => {
       expect((await req(`/api/equipe/${b1.id}`, { metodo: "PUT", token: dono.token, corpo: { senha: "curta" } })).status).toBe(400);
       expect((await req(`/api/equipe/${b1.id}`, { metodo: "PUT", token: dono.token, corpo: { senha: "nova-senha-123", nome: "Renomeado" } })).status).toBe(200);

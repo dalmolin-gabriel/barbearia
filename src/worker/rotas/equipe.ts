@@ -7,7 +7,6 @@ import type { Usuario } from "../../shared/tipos";
 import type { AppEnv } from "../env";
 import { exigirDono, exigirLogin } from "../seguranca/middleware";
 import { gerarHashSenha } from "../seguranca/senha";
-import { apagarSessoesDoUsuario } from "../seguranca/sessao";
 
 export const equipe = new Hono<AppEnv>();
 equipe.use("*", exigirLogin(), exigirDono());
@@ -78,18 +77,23 @@ equipe.put("/:id", limiteCorpo, async (c) => {
   const id = c.req.param("id");
   if (id === c.var.usuario.id && d.ativo === false)
     return c.json({ erro: "Você não pode desativar a si mesmo." }, 400);
-  if (!(await db.prepare("SELECT 1 FROM usuarios WHERE id = ?").bind(id).first()))
-    return c.json({ erro: "Usuário não encontrado." }, 404);
+  const alvo = await db.prepare("SELECT papel FROM usuarios WHERE id = ?").bind(id).first<{ papel: string }>();
+  if (!alvo) return c.json({ erro: "Usuário não encontrado." }, 404);
+  // Outro dono não é mexido por aqui (nem desativar, nem trocar senha ou nome).
+  if (alvo.papel === "dono" && id !== c.var.usuario.id)
+    return c.json({ erro: "Não é possível alterar outro dono." }, 403);
 
   const hash = d.senha === undefined ? null : await gerarHashSenha(d.senha);
-  await db
-    .prepare(
-      "UPDATE usuarios SET nome = COALESCE(?1, nome), ativo = COALESCE(?2, ativo), senha_hash = COALESCE(?3, senha_hash) WHERE id = ?4",
-    )
-    .bind(d.nome ?? null, d.ativo === undefined ? null : d.ativo ? 1 : 0, hash, id)
-    .run();
-  // Desativar ou trocar a senha encerra as sessões abertas.
-  if (d.ativo === false || hash !== null) await apagarSessoesDoUsuario(db, id);
+  // Desativar ou trocar a senha encerra as sessões abertas; tudo numa transação só.
+  const comandos = [
+    db
+      .prepare(
+        "UPDATE usuarios SET nome = COALESCE(?1, nome), ativo = COALESCE(?2, ativo), senha_hash = COALESCE(?3, senha_hash) WHERE id = ?4",
+      )
+      .bind(d.nome ?? null, d.ativo === undefined ? null : d.ativo ? 1 : 0, hash, id),
+  ];
+  if (d.ativo === false || hash !== null) comandos.push(db.prepare("DELETE FROM sessoes WHERE usuario_id = ?").bind(id));
+  await db.batch(comandos);
   const atual = await db.prepare(`SELECT ${COLUNAS} FROM usuarios WHERE id = ?`).bind(id).first<Usuario>();
   return c.json(atual);
 });
