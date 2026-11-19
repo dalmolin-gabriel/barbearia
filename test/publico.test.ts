@@ -137,6 +137,17 @@ describe("API pública de agendamento", () => {
       );
       expect(j.turnstileSiteKey).toBeTruthy();
     });
+
+    it("sem TURNSTILE_SITE_KEY configurada, devolve a chave como texto vazio", async () => {
+      const original = env.TURNSTILE_SITE_KEY;
+      delete (env as { TURNSTILE_SITE_KEY?: string }).TURNSTILE_SITE_KEY;
+      try {
+        const j = (await (await req("/api/publico/info", { ip: novoIp() })).json()) as any;
+        expect(j.turnstileSiteKey).toBe("");
+      } finally {
+        env.TURNSTILE_SITE_KEY = original;
+      }
+    });
   });
 
   describe("vagas", () => {

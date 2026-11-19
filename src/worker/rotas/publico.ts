@@ -78,7 +78,7 @@ publico.get("/info", async (c) => {
     servicos: servicos.results,
     barbeiros: barbeiros.results,
     dias,
-    turnstileSiteKey: c.env.TURNSTILE_SITE_KEY,
+    turnstileSiteKey: c.env.TURNSTILE_SITE_KEY ?? "",
   });
 });
 
