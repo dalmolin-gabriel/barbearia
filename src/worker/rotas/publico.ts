@@ -144,7 +144,7 @@ publico.post(
     const token = (bruto as { turnstile?: unknown }).turnstile;
     if (
       typeof token !== "string" ||
-      !(await validarTurnstile(token, ip, c.env.TURNSTILE_SECRET))
+      !(await validarTurnstile(token, ip, c.env.TURNSTILE_SECRET, c.env.TURNSTILE_VERIFY_URL || undefined))
     )
       return c.json(
         {

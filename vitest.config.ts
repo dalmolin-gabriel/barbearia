@@ -15,6 +15,8 @@ export default defineConfig(async () => {
           TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
           VAPID_PUBLIC_KEY: "",
           CODIGO_INSTALACAO: "codigo-de-teste-123",
+          // Um .dev.vars local (do e2e) não pode vazar para os testes: aqui vale o endereço padrão.
+          TURNSTILE_VERIFY_URL: "",
         } },
       }),
     ],

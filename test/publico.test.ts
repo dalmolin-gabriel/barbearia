@@ -456,6 +456,21 @@ describe("API pública de agendamento", () => {
       expect((await agendar(corpoValido())).status).toBe(403);
       expect(await contar("atendimentos")).toBe(0);
     });
+    it("TURNSTILE_VERIFY_URL troca o endereço de verificação (e2e sem internet)", async () => {
+      const chamadas: string[] = [];
+      vi.restoreAllMocks();
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+        chamadas.push(String(url));
+        return new Response(JSON.stringify({ success: true }));
+      });
+      (env as any).TURNSTILE_VERIFY_URL = "http://127.0.0.1:8788/siteverify";
+      try {
+        expect((await agendar(corpoValido())).status).toBe(201);
+        expect(chamadas[0]).toBe("http://127.0.0.1:8788/siteverify");
+      } finally {
+        delete (env as any).TURNSTILE_VERIFY_URL;
+      }
+    });
     it("sem TURNSTILE_SECRET: 503 (fecha por segurança)", async () => {
       const segredo = env.TURNSTILE_SECRET;
       (env as any).TURNSTILE_SECRET = "";
