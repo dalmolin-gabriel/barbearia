@@ -7,10 +7,14 @@ import Privacidade from "./cliente/Privacidade";
 import PainelLayout from "./painel/PainelLayout";
 
 // Telas do painel são carregadas sob demanda: o cliente que só agenda não baixa o painel.
-const Provisoria = lazy(() => import("./Provisoria"));
 const Login = lazy(() => import("./painel/Login"));
 const Hoje = lazy(() => import("./painel/Hoje"));
 const Lembretes = lazy(() => import("./painel/Lembretes"));
+const Servicos = lazy(() => import("./painel/Servicos"));
+const Horarios = lazy(() => import("./painel/Horarios"));
+const Resumo = lazy(() => import("./painel/Resumo"));
+const Equipe = lazy(() => import("./painel/Equipe"));
+const Clientes = lazy(() => import("./painel/Clientes"));
 
 export function Rotas() {
   return (
@@ -24,11 +28,11 @@ export function Rotas() {
           <Route path="/painel" element={<PainelLayout />}>
             <Route index element={<Hoje />} />
             <Route path="lembretes" element={<Lembretes />} />
-            <Route path="servicos" element={<Provisoria titulo="Serviços" />} />
-            <Route path="horarios" element={<Provisoria titulo="Horários" />} />
-            <Route path="resumo" element={<Provisoria titulo="Resumo" />} />
-            <Route path="equipe" element={<Provisoria titulo="Equipe" />} />
-            <Route path="clientes" element={<Provisoria titulo="Clientes" />} />
+            <Route path="servicos" element={<Servicos />} />
+            <Route path="horarios" element={<Horarios />} />
+            <Route path="resumo" element={<Resumo />} />
+            <Route path="equipe" element={<Equipe />} />
+            <Route path="clientes" element={<Clientes />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
