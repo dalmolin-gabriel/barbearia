@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { api, mensagemDe } from "../api";
 import { Aviso } from "../componentes/Aviso";
 import { Botao } from "../componentes/Botao";
@@ -11,6 +11,17 @@ export default function Login() {
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [primeiroAcesso, setPrimeiroAcesso] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    api<{ disponivel: boolean }>("/api/primeiro-acesso")
+      .then((r) => vivo && setPrimeiroAcesso(r.disponivel))
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   async function entrar(e: FormEvent) {
     e.preventDefault();
@@ -64,6 +75,11 @@ export default function Login() {
       <Botao type="submit" disabled={enviando || !usuario.trim() || !senha}>
         {enviando ? "Entrando…" : "Entrar"}
       </Botao>
+      {primeiroAcesso ? (
+        <Link to="/painel/primeiro-acesso" className="text-center text-[15px] font-semibold text-ouro">
+          Primeiro acesso? Criar conta do dono
+        </Link>
+      ) : null}
     </form>
   );
 }
