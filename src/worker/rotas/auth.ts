@@ -3,6 +3,7 @@ import { deleteCookie, getCookie } from "hono/cookie";
 import { z } from "zod";
 import type { Usuario } from "../../shared/tipos";
 import type { AppEnv } from "../env";
+import { consumirLimite } from "../seguranca/limite";
 import { exigirLogin } from "../seguranca/middleware";
 import { conferirSenha } from "../seguranca/senha";
 import { NOME_COOKIE, apagarSessao, criarSessao, definirCookieSessao, opcoesCookieSessao } from "../seguranca/sessao";
@@ -26,6 +27,9 @@ const HASH_FALSO = "pbkdf2$100000$dCXZgpZiBG8vlZotGMZOeA==$0Q6oUdvSf3HOf9/yK86M1
 type LinhaLogin = Pick<Usuario, "id" | "nome" | "papel" | "ativo"> & { senha_hash: string };
 
 auth.post("/entrar", async (c) => {
+  // Limite por IP, antes de qualquer consulta ao banco de usuários.
+  const ip = c.req.header("CF-Connecting-IP") ?? "desconhecido";
+  if (!(await consumirLimite(c.env.DB, `entrar:${ip}`, 20, 15 * 60))) return c.json({ erro: MSG_BLOQUEADO }, 429);
   const analise = corpoEntrar.safeParse(await c.req.json().catch(() => null));
   if (!analise.success) return c.json({ erro: "Informe usuário e senha." }, 400);
   const { usuario, senha } = analise.data;

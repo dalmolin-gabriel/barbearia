@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import { conferirSenha, gerarHashSenha } from "../src/worker/seguranca/senha";
 import { criarUsuario, req, tokenDoCookie } from "./ajuda";
 
+// Cada login usa um IP próprio para não esbarrar no limite por IP (testado em limite.test.ts).
+let proximoIp = 0;
 const entrar = (usuario: string, senha: string) =>
-  req("/api/auth/entrar", { metodo: "POST", corpo: { usuario, senha } });
+  req("/api/auth/entrar", { metodo: "POST", corpo: { usuario, senha }, ip: `192.0.2.${++proximoIp % 250}-${proximoIp}` });
 
 describe("senha", () => {
   it("confere a certa, rejeita a errada e usa sal diferente a cada hash", async () => {

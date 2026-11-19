@@ -29,10 +29,11 @@ export async function criarUsuario(
 /** Faz uma requisição ao Worker, sempre com o Origin da própria URL. */
 export function req(
   caminho: string,
-  opcoes: { metodo?: string; corpo?: unknown; token?: string } = {},
+  opcoes: { metodo?: string; corpo?: unknown; token?: string; ip?: string } = {},
 ): Promise<Response> {
   const headers: Record<string, string> = { Origin: ORIGEM };
   if (opcoes.corpo !== undefined) headers["Content-Type"] = "application/json";
+  if (opcoes.ip) headers["CF-Connecting-IP"] = opcoes.ip;
   if (opcoes.token) headers.Cookie = `sessao=${opcoes.token}`;
   return SELF.fetch(`${ORIGEM}${caminho}`, {
     method: opcoes.metodo ?? "GET",
