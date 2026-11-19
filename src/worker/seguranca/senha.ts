@@ -46,6 +46,6 @@ export async function conferirSenha(senha: string, guardado: string): Promise<bo
   const iteracoes = Number(partes[1]);
   const sal = deBase64(partes[2]!);
   const esperado = deBase64(partes[3]!);
-  if (!Number.isInteger(iteracoes) || iteracoes < 1 || iteracoes > ITERACOES || !sal || !esperado) return false;
+  if (iteracoes !== ITERACOES || !sal || !esperado) return false;
   return iguaisEmTempoConstante(await derivar(senha, sal, iteracoes), esperado);
 }

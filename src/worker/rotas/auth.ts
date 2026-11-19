@@ -1,10 +1,10 @@
 import { Hono } from "hono";
-import { deleteCookie, getCookie, setCookie } from "hono/cookie";
+import { deleteCookie, getCookie } from "hono/cookie";
 import { z } from "zod";
 import type { Usuario } from "../../shared/tipos";
 import type { Env } from "../env";
-import { conferirSenha, gerarHashSenha } from "../seguranca/senha";
-import { NOME_COOKIE, VALIDADE_SESSAO_S, apagarSessao, criarSessao, lerSessao } from "../seguranca/sessao";
+import { conferirSenha } from "../seguranca/senha";
+import { NOME_COOKIE, apagarSessao, criarSessao, definirCookieSessao, lerSessao, opcoesCookieSessao } from "../seguranca/sessao";
 
 export const auth = new Hono<{ Bindings: Env }>();
 
@@ -18,10 +18,9 @@ const corpoEntrar = z.object({
   senha: z.string().min(1).max(200),
 });
 
-// Hash descartável para gastar o mesmo tempo de PBKDF2 quando o usuário não existe.
-let hashFalso: Promise<string> | null = null;
-
-const opcoesCookie = { httpOnly: true, secure: true, sameSite: "Strict", path: "/" } as const;
+// Hash fixo (gerado uma vez, senha sem uso) para gastar o mesmo tempo de PBKDF2
+// quando o usuário não existe.
+const HASH_FALSO = "pbkdf2$100000$dCXZgpZiBG8vlZotGMZOeA==$0Q6oUdvSf3HOf9/yK86M1lMMG55B8UnrzJ4KwwhLkMM=";
 
 type LinhaLogin = Pick<Usuario, "id" | "nome" | "papel" | "ativo"> & { senha_hash: string };
 
@@ -32,15 +31,26 @@ auth.post("/entrar", async (c) => {
   const db = c.env.DB;
   const agora = new Date();
 
-  const tentativas = await db
-    .prepare("SELECT falhas, bloqueado_ate FROM tentativas_login WHERE usuario = ?")
-    .bind(usuario)
+  // Reserva a tentativa ANTES de conferir a senha, em um único comando atômico: tentativas
+  // paralelas não podem passar do limite. Bloqueio vencido recomeça a contagem em 1.
+  const agoraIso = agora.toISOString();
+  const ate = new Date(agora.getTime() + BLOQUEIO_MS).toISOString();
+  const reserva = await db
+    .prepare(
+      `INSERT INTO tentativas_login (usuario, falhas, bloqueado_ate) VALUES (?1, 1, NULL)
+       ON CONFLICT (usuario) DO UPDATE SET
+         falhas = CASE WHEN bloqueado_ate IS NOT NULL AND bloqueado_ate <= ?2 THEN 1 ELSE falhas + 1 END,
+         bloqueado_ate = CASE
+           WHEN bloqueado_ate IS NOT NULL AND bloqueado_ate <= ?2 THEN NULL
+           WHEN bloqueado_ate IS NOT NULL THEN bloqueado_ate
+           WHEN falhas + 1 >= ?3 THEN ?4
+           ELSE NULL END
+       RETURNING falhas, bloqueado_ate`,
+    )
+    .bind(usuario, agoraIso, MAX_FALHAS, ate)
     .first<{ falhas: number; bloqueado_ate: string | null }>();
-  if (tentativas?.bloqueado_ate) {
-    if (tentativas.bloqueado_ate > agora.toISOString()) return c.json({ erro: MSG_BLOQUEADO }, 429);
-    // Bloqueio vencido: recomeça a contagem do zero.
-    await db.prepare("DELETE FROM tentativas_login WHERE usuario = ?").bind(usuario).run();
-  }
+  // A 5ª tentativa ainda é conferida (pode ser a senha certa); da 6ª em diante, bloqueado.
+  if (!reserva || reserva.falhas > MAX_FALHAS) return c.json({ erro: MSG_BLOQUEADO }, 429);
 
   const linha = await db
     .prepare("SELECT id, nome, papel, ativo, senha_hash FROM usuarios WHERE usuario = ?")
@@ -48,40 +58,30 @@ auth.post("/entrar", async (c) => {
     .first<LinhaLogin>();
 
   // Sempre roda um PBKDF2, exista o usuário ou não, para o tempo não revelar nada.
-  hashFalso ??= gerarHashSenha("hash-descartavel");
-  const confere = await conferirSenha(senha, linha?.senha_hash ?? (await hashFalso));
+  const confere = await conferirSenha(senha, linha?.senha_hash ?? HASH_FALSO);
 
-  if (!linha || !confere || linha.ativo !== 1) {
-    // Incremento atômico; na 5ª falha seguida grava o prazo do bloqueio.
-    const ate = new Date(agora.getTime() + BLOQUEIO_MS).toISOString();
-    await db
-      .prepare(
-        `INSERT INTO tentativas_login (usuario, falhas, bloqueado_ate) VALUES (?1, 1, NULL)
-         ON CONFLICT (usuario) DO UPDATE SET
-           falhas = falhas + 1,
-           bloqueado_ate = CASE WHEN falhas + 1 >= ?2 THEN ?3 ELSE bloqueado_ate END`,
-      )
-      .bind(usuario, MAX_FALHAS, ate)
-      .run();
-    return c.json({ erro: MSG_CREDENCIAIS }, 401);
-  }
+  // Falha: a tentativa já foi contada na reserva.
+  if (!linha || !confere || linha.ativo !== 1) return c.json({ erro: MSG_CREDENCIAIS }, 401);
 
   await db.prepare("DELETE FROM tentativas_login WHERE usuario = ?").bind(usuario).run();
   const token = await criarSessao(db, linha.id);
-  setCookie(c, NOME_COOKIE, token, { ...opcoesCookie, maxAge: VALIDADE_SESSAO_S });
+  definirCookieSessao(c, token);
   return c.json({ usuario: { id: linha.id, nome: linha.nome, papel: linha.papel } });
 });
 
 auth.post("/sair", async (c) => {
   const token = getCookie(c, NOME_COOKIE);
   if (token) await apagarSessao(c.env.DB, token);
-  deleteCookie(c, NOME_COOKIE, opcoesCookie);
+  deleteCookie(c, NOME_COOKIE, opcoesCookieSessao);
   return c.body(null, 204);
 });
 
 auth.get("/eu", async (c) => {
   const token = getCookie(c, NOME_COOKIE);
-  const u = token ? await lerSessao(c.env.DB, token) : null;
-  if (!u) return c.json({ erro: "Sessão inválida ou expirada." }, 401);
+  const sessao = token ? await lerSessao(c.env.DB, token) : null;
+  if (!token || !sessao) return c.json({ erro: "Sessão inválida ou expirada." }, 401);
+  // A validade foi estendida no banco: reenvia o cookie para o navegador acompanhar.
+  if (sessao.renovada) definirCookieSessao(c, token);
+  const u = sessao.usuario;
   return c.json({ usuario: { id: u.id, nome: u.nome, papel: u.papel } });
 });

@@ -1,3 +1,5 @@
+import type { Context } from "hono";
+import { setCookie } from "hono/cookie";
 import type { Usuario } from "../../shared/tipos";
 
 export const NOME_COOKIE = "sessao";
@@ -5,6 +7,13 @@ export const VALIDADE_SESSAO_S = 30 * 24 * 60 * 60;
 const VALIDADE_MS = VALIDADE_SESSAO_S * 1000;
 // Só renova quando já passou mais de um dia, para não gravar a cada requisição.
 const LIMITE_RENOVACAO_MS = 29 * 24 * 60 * 60 * 1000;
+
+export const opcoesCookieSessao = { httpOnly: true, secure: true, sameSite: "Strict", path: "/" } as const;
+
+/** Envia (ou reenvia, para renovar) o cookie de sessão com validade cheia. */
+export function definirCookieSessao(c: Context, token: string): void {
+  setCookie(c, NOME_COOKIE, token, { ...opcoesCookieSessao, maxAge: VALIDADE_SESSAO_S });
+}
 
 function paraBase64Url(bytes: Uint8Array): string {
   let texto = "";
@@ -31,8 +40,14 @@ export async function criarSessao(db: D1Database, usuarioId: string): Promise<st
 
 type LinhaSessao = Usuario & { expira_em: string };
 
-/** Devolve o usuário da sessão, ou null se não existe, expirou ou o usuário está inativo. */
-export async function lerSessao(db: D1Database, token: string): Promise<Usuario | null> {
+/**
+ * Devolve o usuário da sessão, ou null se não existe, expirou ou o usuário está inativo.
+ * `renovada` indica que a validade foi estendida: quem responde deve reenviar o cookie.
+ */
+export async function lerSessao(
+  db: D1Database,
+  token: string,
+): Promise<{ usuario: Usuario; renovada: boolean } | null> {
   if (!token) return null;
   const id = await idDaSessao(token);
   const agora = Date.now();
@@ -45,14 +60,15 @@ export async function lerSessao(db: D1Database, token: string): Promise<Usuario 
     .bind(id, new Date(agora).toISOString())
     .first<LinhaSessao>();
   if (!linha) return null;
-  if (Date.parse(linha.expira_em) - agora < LIMITE_RENOVACAO_MS) {
+  const renovada = Date.parse(linha.expira_em) - agora < LIMITE_RENOVACAO_MS;
+  if (renovada) {
     await db
       .prepare("UPDATE sessoes SET expira_em = ? WHERE id = ?")
       .bind(new Date(agora + VALIDADE_MS).toISOString(), id)
       .run();
   }
   const { expira_em: _expiraEm, ...usuario } = linha;
-  return usuario;
+  return { usuario, renovada };
 }
 
 export async function apagarSessao(db: D1Database, token: string): Promise<void> {

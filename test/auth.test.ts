@@ -80,7 +80,7 @@ describe("login", () => {
 
     const linha = await env.DB.prepare("SELECT falhas, bloqueado_ate FROM tentativas_login WHERE usuario = ?")
       .bind(u.usuario).first<{ falhas: number; bloqueado_ate: string }>();
-    expect(linha!.falhas).toBe(5);
+    expect(linha!.falhas).toBeGreaterThanOrEqual(5);
     const minutos = (Date.parse(linha!.bloqueado_ate) - Date.now()) / 60000;
     expect(minutos).toBeGreaterThan(14);
     expect(minutos).toBeLessThanOrEqual(15);
@@ -90,6 +90,15 @@ describe("login", () => {
     expect((await entrar(u.usuario, u.senha)).status).toBe(200);
     const depois = await env.DB.prepare("SELECT 1 FROM tentativas_login WHERE usuario = ?").bind(u.usuario).first();
     expect(depois).toBeNull();
+  });
+
+  it("tentativas erradas em paralelo não furam o bloqueio", async () => {
+    const u = await criarUsuario("barbeiro");
+    const respostas = await Promise.all(Array.from({ length: 10 }, () => entrar(u.usuario, "errada")));
+    const status = respostas.map((r) => r.status);
+    expect(status.filter((s) => s === 401).length).toBeLessThanOrEqual(5);
+    expect(status.every((s) => s === 401 || s === 429)).toBe(true);
+    expect((await entrar(u.usuario, u.senha)).status).toBe(429);
   });
 
   it("depois de expirar o bloqueio, uma nova falha não bloqueia de imediato", async () => {
@@ -148,7 +157,12 @@ describe("sessão", () => {
     const u = await criarUsuario("barbeiro");
     const quase = new Date(Date.now() + 10 * 86400000).toISOString();
     await env.DB.prepare("UPDATE sessoes SET expira_em = ? WHERE usuario_id = ?").bind(quase, u.id).run();
-    expect((await req("/api/auth/eu", { token: u.token })).status).toBe(200);
+    const r = await req("/api/auth/eu", { token: u.token });
+    expect(r.status).toBe(200);
+    const cookie = r.headers.get("Set-Cookie") ?? "";
+    expect(cookie).toContain(`sessao=${u.token}`);
+    expect(cookie).toContain("Max-Age=2592000");
+    expect(cookie).toContain("HttpOnly");
     const s = await env.DB.prepare("SELECT expira_em FROM sessoes WHERE usuario_id = ?").bind(u.id).first<{ expira_em: string }>();
     expect(Date.parse(s!.expira_em) - Date.now()).toBeGreaterThan(29 * 86400000);
   });
