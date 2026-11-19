@@ -6,3 +6,4 @@ dist
 test-results
 .superpowers/
 scripts/saida/
+.claude/worktrees/
