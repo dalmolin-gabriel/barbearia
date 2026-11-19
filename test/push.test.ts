@@ -29,7 +29,7 @@ let barbeiro = { id: "" };
 let outro = { id: "" };
 let dono = { id: "", token: "" };
 let corte = "";
-const ENDP = (n: string) => `https://push.exemplo.com/${n}`;
+const ENDP = (n: string) => `https://fcm.googleapis.com/fcm/send/${n}`;
 const envOriginal = { pub: env.VAPID_PUBLIC_KEY, priv: env.VAPID_PRIVATE_KEY, sub: env.VAPID_SUBJECT };
 
 async function inscrever(usuarioId: string, endpoint: string) {
@@ -220,7 +220,59 @@ describe("notificações push", () => {
     });
   });
 
+  it("não envia para usuário desativado (barbeiro ou dono) nem para endpoint fora da lista", async () => {
+    await inscrever(barbeiro.id, ENDP("barbeiro"));
+    await inscrever(dono.id, "https://interno.exemplo.com/x");
+    await env.DB.prepare("UPDATE usuarios SET ativo = 0 WHERE id = ?").bind(barbeiro.id).run();
+    const { notificarNovoAgendamento } = await import("../src/worker/push/notificar");
+    await env.DB.prepare("UPDATE usuarios SET ativo = 1 WHERE id = ?").bind(barbeiro.id).run();
+    expect((await agendar("10.1.0.8")).status).toBe(201);
+    const id = (await env.DB.prepare("SELECT id FROM atendimentos").first<{ id: string }>())!.id;
+    await vi.waitFor(() => expect(chamadas.length).toBe(1));
+    chamadas.length = 0;
+    await env.DB.prepare("UPDATE usuarios SET ativo = 0 WHERE id = ?").bind(barbeiro.id).run();
+    await notificarNovoAgendamento(env, id);
+    expect(chamadas).toEqual([]);
+  });
+
   describe("rotas de inscrição", () => {
+    it("rejeita endpoint fora dos serviços de push conhecidos", async () => {
+      const keys = await chavesInscricao();
+      for (const endpoint of [
+        "https://push.exemplo.com/x",
+        "https://localhost/x",
+        "https://fcm.googleapis.com.atacante.com/x",
+        "https://evilpush.apple.com.br/x",
+      ]) {
+        const r = await req("/api/push/inscrever", { metodo: "POST", corpo: { endpoint, keys }, token: dono.token });
+        expect(r.status).toBe(400);
+        expect(await r.json()).toEqual({ erro: "Endereço de notificação não permitido." });
+      }
+      for (const endpoint of [
+        "https://updates.push.services.mozilla.com/wpush/v2/a",
+        "https://web.push.apple.com/a",
+        "https://x.push.apple.com/a",
+        "https://abc.notify.windows.com/a",
+      ])
+        expect((await req("/api/push/inscrever", { metodo: "POST", corpo: { endpoint, keys }, token: dono.token })).status).toBe(200);
+    });
+
+    it("guarda no máximo 10 inscrições por usuário, removendo as mais antigas", async () => {
+      for (let n = 0; n < 12; n++) {
+        const r = await req("/api/push/inscrever", {
+          metodo: "POST",
+          corpo: { endpoint: ENDP(`n${String(n).padStart(2, "0")}`), keys: await chavesInscricao() },
+          token: dono.token,
+        });
+        expect(r.status).toBe(200);
+      }
+      const r = await restantes();
+      expect(r).toHaveLength(10);
+      expect(r).not.toContain(ENDP("n00"));
+      expect(r).not.toContain(ENDP("n01"));
+      expect(r).toContain(ENDP("n11"));
+    });
+
     const k = async () => ({ endpoint: ENDP("novo"), keys: await chavesInscricao() });
 
     it("exige login", async () => {
