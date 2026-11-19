@@ -1,5 +1,5 @@
 {
-  "name": "barbearia-padilhas",
+  "name": "barbearia",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -20,6 +20,7 @@
     "@cloudflare/vitest-pool-workers": "0.23.0",
     "@cloudflare/workers-types": "5.20261119.1",
     "@playwright/test": "1.65.1",
+    "@types/node": "22.20.5",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.3.0",
@@ -27,5 +28,8 @@
     "vite": "8.3.8",
     "vitest": "4.1.12",
     "wrangler": "4.165.0"
+  },
+  "overrides": {
+    "vitest": "4.1.12"
   }
 }
