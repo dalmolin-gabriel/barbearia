@@ -2,6 +2,7 @@
 // terminar de montar a tela); inscrever e cancelar exigem sessão.
 
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import type { AppEnv } from "../env";
 import { enderecoPushPermitido } from "../push/enderecos";
@@ -17,9 +18,14 @@ const MAX_POR_USUARIO = 10;
 
 const cancelamento = z.object({ endpoint });
 
+const limiteCorpo = bodyLimit({
+  maxSize: 8 * 1024,
+  onError: (c) => c.json({ erro: "Requisição muito grande." }, 413),
+});
+
 push.get("/chave", (c) => c.json({ chave: c.env.VAPID_PUBLIC_KEY ?? "" }));
 
-push.post("/inscrever", exigirLogin(), async (c) => {
+push.post("/inscrever", exigirLogin(), limiteCorpo, async (c) => {
   const corpo = inscricao.safeParse(await c.req.json().catch(() => null));
   if (!corpo.success) return c.json({ erro: "Inscrição inválida." }, 400);
   const { endpoint: url, keys } = corpo.data;
@@ -42,7 +48,7 @@ push.post("/inscrever", exigirLogin(), async (c) => {
   return c.json({ ok: true });
 });
 
-push.delete("/inscrever", exigirLogin(), async (c) => {
+push.delete("/inscrever", exigirLogin(), limiteCorpo, async (c) => {
   const corpo = cancelamento.safeParse(await c.req.json().catch(() => null));
   if (!corpo.success) return c.json({ erro: "Inscrição inválida." }, 400);
   await c.env.DB.prepare("DELETE FROM push_inscricoes WHERE endpoint = ? AND usuario_id = ?")

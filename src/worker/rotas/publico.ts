@@ -116,6 +116,17 @@ const corpoAgendar = z.object({
   turnstile: z.string().min(1).max(2048),
 });
 
+// A URL alternativa de verificação (usada só no e2e) vale apenas para loopback; qualquer outro valor é ignorado.
+function urlVerificacaoLocal(valor: string | undefined): string | undefined {
+  if (!valor) return undefined;
+  try {
+    const { hostname } = new URL(valor);
+    return hostname === "127.0.0.1" || hostname === "localhost" ? valor : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 publico.post(
   "/agendar",
   bodyLimit({
@@ -144,7 +155,7 @@ publico.post(
     const token = (bruto as { turnstile?: unknown }).turnstile;
     if (
       typeof token !== "string" ||
-      !(await validarTurnstile(token, ip, c.env.TURNSTILE_SECRET, c.env.TURNSTILE_VERIFY_URL || undefined))
+      !(await validarTurnstile(token, ip, c.env.TURNSTILE_SECRET, urlVerificacaoLocal(c.env.TURNSTILE_VERIFY_URL)))
     )
       return c.json(
         {

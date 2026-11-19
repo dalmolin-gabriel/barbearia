@@ -471,6 +471,21 @@ describe("API pública de agendamento", () => {
         delete (env as any).TURNSTILE_VERIFY_URL;
       }
     });
+    it("TURNSTILE_VERIFY_URL fora de localhost é ignorada (usa a URL real da Cloudflare)", async () => {
+      const chamadas: string[] = [];
+      vi.restoreAllMocks();
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+        chamadas.push(String(url));
+        return new Response(JSON.stringify({ success: true }));
+      });
+      (env as any).TURNSTILE_VERIFY_URL = "https://evil.example/verify";
+      try {
+        expect((await agendar(corpoValido())).status).toBe(201);
+        expect(chamadas[0]).toBe("https://challenges.cloudflare.com/turnstile/v0/siteverify");
+      } finally {
+        delete (env as any).TURNSTILE_VERIFY_URL;
+      }
+    });
     it("sem TURNSTILE_SECRET: 503 (fecha por segurança)", async () => {
       const segredo = env.TURNSTILE_SECRET;
       (env as any).TURNSTILE_SECRET = "";

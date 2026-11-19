@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { deleteCookie, getCookie } from "hono/cookie";
+import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import type { Usuario } from "../../shared/tipos";
 import type { AppEnv } from "../env";
@@ -26,7 +27,12 @@ const HASH_FALSO = "pbkdf2$100000$dCXZgpZiBG8vlZotGMZOeA==$0Q6oUdvSf3HOf9/yK86M1
 
 type LinhaLogin = Pick<Usuario, "id" | "nome" | "papel" | "ativo"> & { senha_hash: string };
 
-auth.post("/entrar", async (c) => {
+const limiteCorpo = bodyLimit({
+  maxSize: 8 * 1024,
+  onError: (c) => c.json({ erro: "Requisição muito grande." }, 413),
+});
+
+auth.post("/entrar", limiteCorpo, async (c) => {
   // Limite por IP, antes de qualquer consulta ao banco de usuários.
   const ip = c.req.header("CF-Connecting-IP") ?? "desconhecido";
   if (!(await consumirLimite(c.env.DB, `entrar:${ip}`, 20, 15 * 60))) return c.json({ erro: MSG_BLOQUEADO }, 429);
