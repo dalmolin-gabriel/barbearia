@@ -1,10 +1,15 @@
 import { Hono } from "hono";
 import { aplicarMigracoes } from "./db/migrar";
-import type { Env } from "./env";
+import type { AppEnv } from "./env";
 import { auth } from "./rotas/auth";
 import { saude } from "./rotas/saude";
+import { cabecalhos, conferirOrigem } from "./seguranca/middleware";
 
-export const app = new Hono<{ Bindings: Env }>();
+export const app = new Hono<AppEnv>();
+
+// Cabeçalhos em toda resposta; CSRF só nas rotas da API.
+app.use("*", cabecalhos());
+app.use("/api/*", conferirOrigem());
 
 // Aplica as migrações uma vez por instância do Worker, antes da primeira rota /api/*.
 // Se falhar, zera a promessa para a próxima requisição tentar de novo.

@@ -1,3 +1,5 @@
+import type { Usuario } from "../shared/tipos";
+
 // Bindings e variáveis do Worker. As variáveis podem estar vazias no primeiro
 // deploy: o site precisa abrir mesmo assim.
 export type Env = {
@@ -10,3 +12,6 @@ export type Env = {
   VAPID_SUBJECT: string;
   CODIGO_INSTALACAO?: string;
 };
+
+/** Tipos do Hono em todo o Worker: bindings e o usuário que `exigirLogin` coloca no contexto. */
+export type AppEnv = { Bindings: Env; Variables: { usuario: Usuario } };

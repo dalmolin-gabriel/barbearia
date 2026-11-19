@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import type { Env } from "../env";
+import type { AppEnv } from "../env";
 
-export const saude = new Hono<{ Bindings: Env }>();
+export const saude = new Hono<AppEnv>();
 
 saude.get("/", (c) => c.json({ ok: true }));

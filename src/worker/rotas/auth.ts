@@ -2,11 +2,12 @@ import { Hono } from "hono";
 import { deleteCookie, getCookie } from "hono/cookie";
 import { z } from "zod";
 import type { Usuario } from "../../shared/tipos";
-import type { Env } from "../env";
+import type { AppEnv } from "../env";
+import { exigirLogin } from "../seguranca/middleware";
 import { conferirSenha } from "../seguranca/senha";
-import { NOME_COOKIE, apagarSessao, criarSessao, definirCookieSessao, lerSessao, opcoesCookieSessao } from "../seguranca/sessao";
+import { NOME_COOKIE, apagarSessao, criarSessao, definirCookieSessao, opcoesCookieSessao } from "../seguranca/sessao";
 
-export const auth = new Hono<{ Bindings: Env }>();
+export const auth = new Hono<AppEnv>();
 
 const MSG_CREDENCIAIS = "Usuário ou senha incorretos.";
 const MSG_BLOQUEADO = "Muitas tentativas. Tente de novo em 15 minutos.";
@@ -76,12 +77,7 @@ auth.post("/sair", async (c) => {
   return c.body(null, 204);
 });
 
-auth.get("/eu", async (c) => {
-  const token = getCookie(c, NOME_COOKIE);
-  const sessao = token ? await lerSessao(c.env.DB, token) : null;
-  if (!token || !sessao) return c.json({ erro: "Sessão inválida ou expirada." }, 401);
-  // A validade foi estendida no banco: reenvia o cookie para o navegador acompanhar.
-  if (sessao.renovada) definirCookieSessao(c, token);
-  const u = sessao.usuario;
+auth.get("/eu", exigirLogin(), (c) => {
+  const u = c.var.usuario;
   return c.json({ usuario: { id: u.id, nome: u.nome, papel: u.papel } });
 });
