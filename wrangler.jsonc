@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "barbearia-padilhas",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2025-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist/client",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  // Sem database_id: o wrangler 4 cria o D1 sozinho no primeiro deploy.
+  "d1_databases": [
+    { "binding": "DB", "database_name": "padilhas", "migrations_dir": "migrations" }
+  ],
+  "vars": {
+    "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
+    "VAPID_PUBLIC_KEY": "",
+    "VAPID_SUBJECT": "mailto:contato@exemplo.com"
+  }
+}
