@@ -32,7 +32,7 @@ export async function gerarHashSenha(senha: string): Promise<string> {
 }
 
 /** Compara dois vetores sem parar no primeiro byte diferente. */
-function iguaisEmTempoConstante(a: Uint8Array, b: Uint8Array): boolean {
+export function iguaisEmTempoConstante(a: Uint8Array, b: Uint8Array): boolean {
   let diferenca = a.length ^ b.length;
   const tamanho = Math.max(a.length, b.length);
   for (let i = 0; i < tamanho; i++) diferenca |= (a[i] ?? 0) ^ (b[i] ?? 0);

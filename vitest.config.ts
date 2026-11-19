@@ -8,7 +8,14 @@ export default defineConfig(async () => {
     plugins: [
       cloudflareTest({
         wrangler: { configPath: "./wrangler.jsonc" },
-        miniflare: { bindings: { MIGRACOES: migrations, TURNSTILE_SECRET: "segredo-de-teste" } },
+        miniflare: { bindings: {
+          MIGRACOES: migrations,
+          TURNSTILE_SECRET: "segredo-de-teste",
+          // Em produção estas variáveis vêm do painel do Cloudflare (ver docs/IMPLANTACAO.md).
+          TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+          VAPID_PUBLIC_KEY: "",
+          CODIGO_INSTALACAO: "codigo-de-teste-123",
+        } },
       }),
     ],
     test: {

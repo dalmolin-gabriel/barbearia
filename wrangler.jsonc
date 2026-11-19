@@ -14,9 +14,10 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "padilhas", "migrations_dir": "migrations" }
   ],
+  // Preserva as variáveis e secrets criados no painel do Cloudflare a cada deploy.
+  // Aqui só ficam valores fixos; as chaves (Turnstile, VAPID) são cadastradas no painel.
+  "keep_vars": true,
   "vars": {
-    "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
-    "VAPID_PUBLIC_KEY": "",
     "VAPID_SUBJECT": "mailto:contato@exemplo.com"
   }
 }

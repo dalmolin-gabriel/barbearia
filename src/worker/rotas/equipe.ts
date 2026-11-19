@@ -5,6 +5,7 @@ import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import type { Usuario } from "../../shared/tipos";
 import type { AppEnv } from "../env";
+import { comandosExpedientePadrao } from "../db/expediente-padrao";
 import { exigirDono, exigirLogin } from "../seguranca/middleware";
 import { gerarHashSenha } from "../seguranca/senha";
 
@@ -52,13 +53,7 @@ equipe.post("/", limiteCorpo, async (c) => {
           "INSERT INTO usuarios (id, nome, usuario, senha_hash, papel, ativo, criado_em) VALUES (?, ?, ?, ?, 'barbeiro', 1, ?)",
         )
         .bind(id, d.nome, d.usuario, hash, new Date().toISOString()),
-      ...Array.from({ length: 7 }, (_, dia) =>
-        db
-          .prepare(
-            "INSERT INTO expediente (usuario_id, dia_semana, aberto, inicio_min, fim_min, almoco_ini_min, almoco_fim_min) VALUES (?, ?, ?, 540, 1140, 720, 780)",
-          )
-          .bind(id, dia, dia >= 1 ? 1 : 0),
-      ),
+      ...comandosExpedientePadrao(db, id),
     ]);
   } catch (erro) {
     // Cadastro simultâneo do mesmo usuário: a restrição UNIQUE do banco decide.
