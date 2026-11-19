@@ -92,11 +92,13 @@ Se o horário for ocupado por outra pessoa entre a escolha e a confirmação, ap
 Pedido do dono: em dezembro ele abriu o mês inteiro, clientes marcaram com 4 semanas de
 antecedência e ele perdeu a organização.
 
-- O cliente só marca **dentro da semana atual, de segunda a domingo**, a partir de agora.
-- A **semana seguinte abre no sábado às 18h** (horário de Brasília). Do sábado 18h até o domingo
-  23h59, o cliente vê o resto da semana atual mais a semana seguinte inteira.
-- Exemplo: na terça, 1º/12, o cliente vê de 1º a 6/12. No sábado, 5/12, às 18h, abre de 7 a 13/12.
-- O dia e a hora de abertura ficam guardados na configuração (padrão: sábado, 18h). Mudar exige
+- A semana de marcação tem **6 dias: de segunda a sábado**. Domingo não entra (barbearia fechada).
+  O cliente só marca nos dias que restam da semana atual, a partir de agora.
+- A **semana seguinte abre no sábado às 23h** (horário de Brasília). Do sábado 23h em diante, o cliente
+  vê a semana seguinte inteira, de segunda a sábado.
+- Exemplo: na terça, 1º/12, o cliente vê de 1º a 5/12 (terça a sábado). No sábado, 5/12, às 23h,
+  abre de 7 a 12/12 (segunda a sábado).
+- O dia e a hora de abertura ficam guardados na configuração (padrão: sábado, 23h). Mudar exige
   um ajuste técnico, sem tela no painel *(minha decisão)*.
 - **A regra vale só para o cliente.** Os barbeiros e o pai marcam em qualquer data.
 - O servidor aplica a mesma regra ao receber um agendamento. Não dá para burlar mexendo no navegador.
@@ -105,10 +107,16 @@ antecedência e ele perdeu a organização.
 
 Pensado para quem não gosta de app: botões grandes, poucas telas, tudo no celular.
 
-- **Agenda** (tela inicial): calendário do mês no topo, livre para navegar para qualquer mês. Abaixo,
-  a lista do dia escolhido: horário, cliente, serviço e situação. O pai alterna entre "Minha", cada barbeiro
-  e "Todos". Toques rápidos em cada atendimento: **Confirmou · Cancelou · Atendido · Faltou** e
-  **WhatsApp**. Cancelado libera o horário.
+- **Início** (tela inicial, como no `barbearia-bem-gerida`): atendimentos de hoje, previsto, recebido,
+  próximo cliente, atendimentos para fechar e próximos horários. Atalhos para lembretes e resumo do mês.
+- **Agendamentos do dia** (pedido do usuário): lista com **todos** os agendamentos do dia escolhido,
+  cada um com **data, horário, nome do cliente, serviço**, barbeiro e situação. Navega por dia
+  (‹ Hoje ›) e por calendário. O pai alterna entre "Minha", cada barbeiro e "Todos".
+- **Agenda em colunas** (outra visão da mesma tela, como no `barbearia-bem-gerida`): uma coluna por
+  barbeiro, horas na lateral e cores por situação (agendado, confirmado, concluído, faltou; bloqueio
+  e horário fechado aparecem tracejados).
+- **Detalhe do atendimento** (ao tocar num agendamento): **Concluir · Cliente confirmou · Remarcar ·
+  Não compareceu · Cancelar** e WhatsApp (mandar lembrete ou abrir conversa). Cancelado libera o horário.
 - **+ Marcar cliente:** nome, celular (opcional), serviço, barbeiro (só o pai escolhe), dia e hora.
   Qualquer data, sem a regra da semana. *(Minha decisão:)* o barbeiro também pode marcar fora do
   expediente, por cima de um bloqueio e no passado (para registrar quem chegou sem marcar). O
