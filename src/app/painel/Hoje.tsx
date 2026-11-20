@@ -168,7 +168,7 @@ export default function Hoje() {
   const cartaoNumero = (rotulo: string, valor: string, ouro = false) => (
     <div className="cartao px-4 py-3.5">
       <div className="text-xs text-texto-suave">{rotulo}</div>
-      <div className={`bebas mt-0.5 text-[30px] leading-none ${ouro ? "text-ouro" : ""}`}>{valor}</div>
+      <div className={`bebas mt-0.5 whitespace-nowrap text-[22px] leading-none sm:text-[28px] ${ouro ? "text-ouro" : ""}`}>{valor}</div>
     </div>
   );
 

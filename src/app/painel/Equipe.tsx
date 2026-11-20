@@ -32,7 +32,7 @@ export default function Equipe() {
   };
 
   const equipe = lista.dados?.equipe ?? [];
-  const colunas = "md:grid-cols-[minmax(0,1.4fr)_minmax(0,1.6fr)_110px_90px_70px]";
+  const colunas = "md:grid-cols-[minmax(200px,1.4fr)_minmax(0,1.6fr)_110px_90px_70px]";
 
   return (
     <Pagina
