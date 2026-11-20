@@ -28,7 +28,6 @@ test("cadastro aberto cria o dono e depois fecha", async ({ page }) => {
   await expect(page).toHaveURL(/\/painel\/cadastro/);
   await expect(page.getByRole("heading", { name: "Criar conta" })).toBeVisible();
 
-  await page.getByLabel("Nome").fill("Padilha");
   await page.getByLabel("E-mail").fill("isso-nao-e-email");
   await page.getByLabel(/^Senha/).fill(SENHA);
   await page.getByRole("button", { name: "mostrar" }).click();

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { conferirSenha } from "../src/worker/seguranca/senha";
 import { req, tokenDoCookie } from "./ajuda";
 
-const dados = { nome: "Seu Padilha", email: "padilha@exemplo.com", senha: "senha-forte-1" };
+const dados = { email: "padilha@exemplo.com", senha: "senha-forte-1" };
 
 let proximoIp = 0;
 const criar = (corpo: unknown, ip = `198.51.100.${++proximoIp}`) =>
@@ -26,8 +26,9 @@ describe("cadastro da primeira conta", () => {
   it("sem usuários: 201, cria dono, expediente e serviços, e já entra", async () => {
     const r = await criar({ ...dados, email: "  Padilha@Exemplo.com " });
     expect(r.status).toBe(201);
-    const corpo = (await r.json()) as { usuario: { papel: string } };
+    const corpo = (await r.json()) as { usuario: { papel: string; nome: string } };
     expect(corpo.usuario.papel).toBe("dono");
+    expect(corpo.usuario.nome).toBe("Padilha");
     const token = tokenDoCookie(r);
     expect(token).toBeTruthy();
     expect(r.headers.get("Set-Cookie") ?? "").toContain("HttpOnly");
@@ -92,10 +93,8 @@ describe("cadastro da primeira conta", () => {
     expect(await contar("usuarios")).toBe(1);
   });
 
-  it("valida nome, e-mail e senha (400)", async () => {
+  it("valida e-mail e senha (400)", async () => {
     for (const ruim of [
-      { ...dados, nome: "" },
-      { ...dados, nome: "x".repeat(61) },
       { ...dados, email: "padilha" },
       { ...dados, email: "a b@exemplo.com" },
       { ...dados, email: `${"a".repeat(250)}@x.com` },
@@ -104,6 +103,14 @@ describe("cadastro da primeira conta", () => {
     ])
       expect((await criar(ruim)).status).toBe(400);
     expect(await contar("usuarios")).toBe(0);
+  });
+
+  it("nome automático: antes do @, primeira maiúscula, até 60 caracteres", async () => {
+    expect((await criar({ ...dados, email: "gabriel.dalmolin@x.com" })).status).toBe(201);
+    expect((await env.DB.prepare("SELECT nome FROM usuarios").first<{ nome: string }>())?.nome).toBe("Gabriel.dalmolin");
+    await env.DB.prepare("DELETE FROM usuarios").run();
+    expect((await criar({ ...dados, email: `${"a".repeat(80)}@x.com` })).status).toBe(201);
+    expect((await env.DB.prepare("SELECT nome FROM usuarios").first<{ nome: string }>())?.nome).toBe("A" + "a".repeat(59));
   });
 
   it("limita a 5 tentativas por hora por IP (429)", async () => {
@@ -115,7 +122,7 @@ describe("cadastro da primeira conta", () => {
   });
 
   it("corpo grande demais: 413", async () => {
-    expect((await criar({ ...dados, nome: "x".repeat(9000) })).status).toBe(413);
+    expect((await criar({ ...dados, senha: "x".repeat(9000) })).status).toBe(413);
   });
 
   it("chamadas simultâneas criam exatamente um dono", async () => {

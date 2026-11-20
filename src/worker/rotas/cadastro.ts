@@ -16,10 +16,15 @@ export const cadastro = new Hono<AppEnv>();
 const NAO_ENCONTRADO = { erro: "Não encontrado." };
 
 const dados = z.object({
-  nome: z.string().trim().min(1).max(60),
   email: emailSchema,
   senha: z.string().min(8).max(200),
 });
+
+/** Nome inicial do dono: a parte do e-mail antes do "@", com a primeira letra maiúscula (até 60 caracteres). */
+function nomeDoEmail(email: string): string {
+  const parte = email.split("@")[0] ?? "";
+  return (parte.charAt(0).toUpperCase() + parte.slice(1)).slice(0, 60);
+}
 
 const SERVICOS_EXEMPLO = [
   { nome: "Corte", duracao: 30 },
@@ -48,6 +53,7 @@ cadastro.post(
     if (!analise.success) return c.json({ erro: "Dados inválidos." }, 400);
     const d = analise.data;
 
+    const nome = nomeDoEmail(d.email);
     const id = crypto.randomUUID();
     const hash = await gerarHashSenha(d.senha);
     const agora = new Date().toISOString();
@@ -67,7 +73,7 @@ cadastro.post(
             `INSERT INTO usuarios (id, nome, usuario, senha_hash, papel, ativo, criado_em)
              SELECT ?1, ?2, ?3, ?4, 'dono', 1, ?5 WHERE NOT EXISTS (SELECT 1 FROM usuarios)`,
           )
-          .bind(id, d.nome, d.email, hash, agora),
+          .bind(id, nome, d.email, hash, agora),
         ...comandosExpedientePadrao(db, id),
         db
           .prepare(
@@ -87,6 +93,6 @@ cadastro.post(
 
     const token = await criarSessao(db, id);
     definirCookieSessao(c, token);
-    return c.json({ usuario: { id, nome: d.nome, papel: "dono" } }, 201);
+    return c.json({ usuario: { id, nome, papel: "dono" } }, 201);
   },
 );

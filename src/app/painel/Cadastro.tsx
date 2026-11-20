@@ -11,7 +11,6 @@ export default function Cadastro() {
   const navegar = useNavigate();
   const [disponivel, setDisponivel] = useState<boolean | null>(null);
   const [falha, setFalha] = useState<string | null>(null);
-  const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [mostrar, setMostrar] = useState(false);
@@ -34,7 +33,7 @@ export default function Cadastro() {
     setEnviando(true);
     setErro(null);
     try {
-      await api("/api/cadastro", { corpo: { nome: nome.trim(), email: email.trim(), senha } });
+      await api("/api/cadastro", { corpo: { email: email.trim(), senha } });
       navegar("/painel", { replace: true });
     } catch (e) {
       setErro(mensagemDe(e));
@@ -75,12 +74,6 @@ export default function Cadastro() {
   return (
     <form onSubmit={criar} className="mx-auto flex max-w-[480px] flex-col gap-4 px-6 pb-10 pt-10">
       {cabecalho}
-      <div>
-        <label htmlFor="nome" className="rotulo block">
-          Nome
-        </label>
-        <input id="nome" className="campo" autoComplete="name" maxLength={60} value={nome} onChange={(e) => setNome(e.target.value)} />
-      </div>
       <div>
         <label htmlFor="email" className="rotulo block">
           E-mail
@@ -123,9 +116,12 @@ export default function Cadastro() {
         </div>
       </div>
       {erro ? <Aviso>{erro}</Aviso> : null}
-      <Botao type="submit" disabled={enviando || !nome.trim() || !email.trim() || !senha}>
+      <Botao type="submit" disabled={enviando || !email.trim() || !senha}>
         {enviando ? "Criando…" : "Criar conta"}
       </Botao>
+      <p className="text-center text-xs text-texto-suave">
+        Você pode trocar o nome que aparece para os clientes depois, em Equipe.
+      </p>
       <Link to="/painel/entrar" className="text-center text-[15px] font-semibold text-ouro">
         Já tem conta? Entrar
       </Link>

@@ -87,8 +87,10 @@ no código.
 
 1. Abra `https://SEU-SITE/painel` (troque `SEU-SITE` pelo endereço do passo 2) e toque em
    **Cadastre-se** (o link só aparece enquanto não existe nenhuma conta).
-2. Preencha **Nome**, **E-mail** e uma **Senha** de pelo menos 8 caracteres.
+2. Preencha **E-mail** e uma **Senha** de pelo menos 8 caracteres.
 3. Toque em **Criar conta**. Você já entra no painel como dono.
+4. Abra **Equipe**, toque em **Editar** no seu nome e coloque o nome do barbeiro (o cadastro usa a
+   parte do e-mail antes do @). Os clientes veem esse nome ao agendar.
 
 O cadastro funciona **uma única vez**: depois que existe uma conta, o link **Cadastre-se** some e
 o endereço `/painel/cadastro` mostra "Cadastro fechado". Atenção: enquanto ninguém criou a conta,
