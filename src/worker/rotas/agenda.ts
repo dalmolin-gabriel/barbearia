@@ -10,6 +10,7 @@ import {
   dataValida,
   diaSemanaDe,
   instanteUTC,
+  partesLocais,
   somarDias,
 } from "../../shared/tempo";
 import { normalizarTelefone } from "../../shared/telefone";
@@ -124,6 +125,12 @@ atendimentos.patch("/:id/situacao", limiteCorpo, async (c) => {
   const id = c.req.param("id");
   const a = await buscarAtendimento(c, id);
   if (!a) return c.json({ erro: NAO_ENCONTRADO }, 404);
+  // "Chegou" e "Faltou" só valem no dia do atendimento (Brasília) ou depois; confirmar/cancelar/reabrir, em qualquer dia.
+  if (
+    (situacao === "atendido" || situacao === "faltou") &&
+    partesLocais(new Date(a.inicio)).data > partesLocais(new Date()).data
+  )
+    return c.json({ erro: 'Só dá para marcar "Chegou" ou "Faltou" no dia do atendimento.' }, 400);
   // Reabrir (voltar a marcado/confirmado) não pode sobrepor outro atendimento ativo: checa no mesmo UPDATE.
   const ativa = situacao === "marcado" || situacao === "confirmado" ? 1 : 0;
   const r = await c.env.DB.prepare(

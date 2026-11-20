@@ -49,6 +49,7 @@ export default function Atendimento({
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const ativo = estaAtivo(a);
+  const futuro = dataDe(a.inicio) > hojeLocal();
 
   async function mudar(situacao: Situacao) {
     setOcupado(true);
@@ -100,9 +101,13 @@ export default function Atendimento({
 
         {ativo ? (
           <>
-            <Botao disabled={ocupado} onClick={() => void mudar("atendido")}>
-              ✓ Chegou / Atendido
-            </Botao>
+            {futuro ? (
+              <p className="text-center text-[13px] text-texto-suave">“Chegou” fica disponível no dia do atendimento.</p>
+            ) : (
+              <Botao disabled={ocupado} onClick={() => void mudar("atendido")}>
+                ✓ Chegou / Atendido
+              </Botao>
+            )}
             {confirmandoCancelar ? (
               <div className="flex flex-col gap-2 rounded-xl border border-erro/50 bg-erro/10 p-3.5">
                 <b className="text-[15px]">Cancelar o horário de {primeiroNome(a.cliente_nome)}?</b>
@@ -129,9 +134,11 @@ export default function Atendimento({
                 <Botao pequeno variante="secundario" className="font-semibold" onClick={() => aoRemarcar(a)}>
                   Remarcar
                 </Botao>
-                <Botao pequeno variante="secundario" className="font-semibold !text-erro" disabled={ocupado} onClick={() => void mudar("faltou")}>
-                  Faltou
-                </Botao>
+                {futuro ? null : (
+                  <Botao pequeno variante="secundario" className="font-semibold !text-erro" disabled={ocupado} onClick={() => void mudar("faltou")}>
+                    Faltou
+                  </Botao>
+                )}
                 <Botao pequeno variante="secundario" className="font-semibold !text-erro" onClick={() => setConfirmandoCancelar(true)}>
                   Cancelar
                 </Botao>

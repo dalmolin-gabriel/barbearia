@@ -130,11 +130,12 @@ test("cliente cancela o próprio horário pelo link e o painel não o lista mais
   await alvo.click();
   const agenda = (await (await resposta).json()) as { atendimentos: { cliente_nome: string; status: string }[] };
   expect(agenda.atendimentos.find((x) => x.cliente_nome === "Maria Cancela")?.status).toBe("cancelado");
-  await expect(page.getByText("0 clientes · 0 atendidos")).toBeVisible();
+  // Se só há um dia habilitado, o João (outro teste) divide o dia com a Maria: aí o total não zera.
+  if (dia !== diaMarcado) await expect(page.getByText("0 clientes · 0 atendidos")).toBeVisible();
   await expect(page.getByText("Maria Cancela")).toHaveCount(0);
 });
 
-test("dono vê o agendamento em Hoje e marca Chegou", async ({ page }) => {
+test("dono vê o agendamento em Hoje e só marca Chegou no dia do atendimento", async ({ page }) => {
   await page.goto("/painel/entrar");
   await expect(page.getByRole("link", { name: "Não tem conta? Cadastre-se" })).toHaveCount(0);
   await page.getByLabel("E-mail").fill(EMAIL);
@@ -151,9 +152,53 @@ test("dono vê o agendamento em Hoje e marca Chegou", async ({ page }) => {
   }
   await expect(page.getByText("João Teste").first()).toBeVisible();
 
+  // Dia do atendimento no futuro (Brasília): sem "Chegou"/"Faltou", só o aviso; o resto das ações segue.
+  const hoje = await page.evaluate(() =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date()),
+  );
+  if (diaMarcado > hoje) {
+    const nota = "“Chegou” fica disponível no dia do atendimento.";
+    await expect(page.getByText(nota)).toBeVisible();
+    await expect(page.getByRole("button", { name: "✓ Chegou" })).toHaveCount(0);
+    await page.getByRole("button", { name: /João Teste/ }).first().click();
+    await expect(page.getByRole("button", { name: "Cliente confirmou" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Remarcar" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Cancelar" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Faltou" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Chegou/ })).toHaveCount(0);
+    await page.keyboard.press("Escape");
+
+    // O servidor também recusa; um atendimento de hoje, à noite, aceita "Chegou".
+    const ids = await page.evaluate(async (dia) => {
+      const post = (url: string, corpo: unknown, metodo = "POST") =>
+        fetch(url, { method: metodo, headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) });
+      const servicos = (await (await fetch("/api/servicos")).json()) as { id: string }[] | { servicos: { id: string }[] };
+      const lista = Array.isArray(servicos) ? servicos : servicos.servicos;
+      const agenda = (await (await fetch(`/api/agenda?data=${dia}`)).json()) as { atendimentos: { id: string; cliente_nome: string }[] };
+      const futuro = agenda.atendimentos.find((a) => a.cliente_nome === "João Teste")!;
+      const recusa = await post(`/api/atendimentos/${futuro.id}/situacao`, { situacao: "atendido" }, "PATCH");
+      return { recusa: recusa.status, servico: lista[0]!.id };
+    }, diaMarcado);
+    expect(ids.recusa).toBe(400);
+    const criado = await page.evaluate(
+      async ({ servico, dia }) =>
+        (
+          await fetch("/api/atendimentos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nome: "Cliente Hoje", servicos: [servico], data: dia, hora: "23:30", confirmarAvisos: true }),
+          })
+        ).status,
+      { servico: ids.servico, dia: hoje },
+    );
+    expect(criado).toBe(201);
+    await page.getByRole("button", { name: "Hoje", exact: true }).click();
+    await expect(page.getByText("Cliente Hoje").first()).toBeVisible();
+  }
+
   await page.getByRole("button", { name: "✓ Chegou" }).click();
   await expect(page.getByText("✓ JÁ ATENDIDOS")).toBeVisible();
-  await expect(page.getByText("João Teste")).toBeVisible();
+  await expect(page.getByText(diaMarcado > hoje ? "Cliente Hoje" : "João Teste")).toBeVisible();
 });
 
 test("dono zera o sistema e o Cadastre-se volta", async ({ page }) => {

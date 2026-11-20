@@ -12,6 +12,7 @@ import { useAtualizar, useCarregar, useNomeBarbearia } from "../hooks";
 import { useSessao } from "../sessao";
 import {
   ddmm,
+  dataDe,
   dataPorExtenso,
   diaCurto,
   diaSemanaDe,
@@ -44,6 +45,12 @@ function emTexto(a: Atend, agora: number): string {
   const h = Math.floor(min / 60);
   const r = min % 60;
   return `em ${h}h${r ? String(r).padStart(2, "0") : ""}`;
+}
+
+function quandoFuturo(a: Atend, hoje: string): string {
+  const d = dataDe(a.inicio);
+  const dia = d === somarDias(hoje, 1) ? "amanhã" : `${diaCurto(diaSemanaDe(d)).toLowerCase()}, ${ddmm(d)}`;
+  return `${dia} às ${horaDe(a.inicio)}`;
 }
 
 function periodoBloqueio(b: Bloq): string {
@@ -243,7 +250,11 @@ export default function Hoje() {
               <>
                 <div className="flex items-center justify-between">
                   <Secao ouro>PRÓXIMO CLIENTE</Secao>
-                  {data === hoje ? <span className="pilula bg-ouro/15 text-ouro">{emTexto(proximo, agora)}</span> : null}
+                  {data === hoje ? (
+                    <span className="pilula bg-ouro/15 text-ouro">{emTexto(proximo, agora)}</span>
+                  ) : dataDe(proximo.inicio) > hoje ? (
+                    <span className="pilula bg-ouro/15 text-ouro">{quandoFuturo(proximo, hoje)}</span>
+                  ) : null}
                 </div>
                 <div className="flex flex-col gap-1 rounded-2xl border border-ouro/70 bg-superficie p-5 shadow-[0_0_28px_rgba(208,184,72,0.08)]">
                   <button type="button" onClick={() => setAberto(proximo)} className="flex items-center gap-4 text-left">
@@ -258,9 +269,13 @@ export default function Hoje() {
                     </span>
                   </button>
                   <div className="mt-3 flex gap-2.5 sm:max-w-md">
-                    <Botao pequeno onClick={() => void chegou(proximo)}>
-                      ✓ Chegou
-                    </Botao>
+                    {dataDe(proximo.inicio) > hoje ? (
+                      <p className="flex-1 self-center text-[13px] text-texto-suave">“Chegou” fica disponível no dia do atendimento.</p>
+                    ) : (
+                      <Botao pequeno onClick={() => void chegou(proximo)}>
+                        ✓ Chegou
+                      </Botao>
+                    )}
                     {linkProximo ? (
                       <BotaoLink pequeno variante="whatsapp" href={linkProximo} target="_blank" rel="noopener noreferrer">
                         WhatsApp

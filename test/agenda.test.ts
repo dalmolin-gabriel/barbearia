@@ -5,6 +5,7 @@ import { criarUsuario, req } from "./ajuda";
 
 // Terça-feira, 2026-12-01, 10:00 em Brasília (UTC-3) = 13:00 UTC.
 const AGORA = new Date("2026-12-01T13:00:00.000Z");
+const TERCA = "2026-12-01"; // o "hoje" dos testes
 const QUARTA = "2026-12-02";
 
 let dono: { id: string; token: string };
@@ -203,7 +204,7 @@ describe("agenda do painel", () => {
     });
 
     it("confirma, atende e rejeita valor inválido", async () => {
-      const id = await semearAtendimento(b1.id, QUARTA, 600);
+      const id = await semearAtendimento(b1.id, TERCA, 720);
       for (const situacao of ["confirmado", "atendido", "faltou"]) {
         const r = await req(`/api/atendimentos/${id}/situacao`, {
           metodo: "PATCH",
@@ -218,6 +219,32 @@ describe("agenda do painel", () => {
         corpo: { situacao: "inventado" },
       });
       expect(ruim.status).toBe(400);
+    });
+
+    it("atendimento de amanhã: atendido e faltou dão 400 e nada muda; confirmado passa", async () => {
+      const id = await semearAtendimento(b1.id, QUARTA, 600);
+      const patch = (situacao: string) =>
+        req(`/api/atendimentos/${id}/situacao`, { metodo: "PATCH", token: b1.token, corpo: { situacao } });
+      const status = async () =>
+        (await env.DB.prepare("SELECT status FROM atendimentos WHERE id = ?").bind(id).first<any>()).status;
+      for (const situacao of ["atendido", "faltou"]) {
+        const r = await patch(situacao);
+        expect(r.status).toBe(400);
+        expect(((await r.json()) as any).erro).toBe('Só dá para marcar "Chegou" ou "Faltou" no dia do atendimento.');
+        expect(await status()).toBe("marcado");
+      }
+      expect((await patch("confirmado")).status).toBe(200);
+      expect(await status()).toBe("confirmado");
+    });
+
+    it("atendimento de hoje (mesmo à noite, em Brasília) pode ser marcado atendido", async () => {
+      const id = await semearAtendimento(b1.id, TERCA, 1110);
+      const r = await req(`/api/atendimentos/${id}/situacao`, {
+        metodo: "PATCH",
+        token: b1.token,
+        corpo: { situacao: "atendido" },
+      });
+      expect(r.status).toBe(200);
     });
   });
 
