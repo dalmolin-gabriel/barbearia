@@ -51,7 +51,8 @@ test("cadastro aberto cria o dono e depois fecha", async ({ page }) => {
   await expect(page.getByText("Cadastro fechado. Peça ao dono para criar sua conta.")).toBeVisible();
 });
 
-test("cliente agenda um Corte e vê a tela Pronto", async ({ page }) => {
+/** Fluxo do cliente até a tela Pronto. `ultimoDia` escolhe o dia mais distante (longe do prazo de 2 h). */
+async function agendarCorte(page: Page, nome: string, celular: string, ultimoDia = false) {
   await stubTurnstile(page);
   await page.goto("/");
 
@@ -65,9 +66,10 @@ test("cliente agenda um Corte e vê a tela Pronto", async ({ page }) => {
   const horario = page.locator("button[aria-pressed]").filter({ hasText: /^\d\d:\d\d$/ }).first();
   const total = await dias.count();
   let achou = false;
-  for (let i = 0; i < total && !achou; i++) {
-    const dia = dias.nth(i);
-    diaMarcado = (await dia.getAttribute("aria-label")) ?? "";
+  let marcado = "";
+  for (let n = 0; n < total && !achou; n++) {
+    const dia = dias.nth(ultimoDia ? total - 1 - n : n);
+    marcado = (await dia.getAttribute("aria-label")) ?? "";
     await dia.click();
     await horario.or(page.getByText("Sem horários livres neste dia.")).first().waitFor();
     achou = (await horario.count()) > 0;
@@ -76,14 +78,60 @@ test("cliente agenda um Corte e vê a tela Pronto", async ({ page }) => {
   await horario.click();
 
   // 3. Dados, aceite e Turnstile
-  await page.getByLabel("Seu nome").fill("João Teste");
-  await page.getByLabel("Celular (WhatsApp)").fill("48999991234");
+  await page.getByLabel("Seu nome").fill(nome);
+  await page.getByLabel("Celular (WhatsApp)").fill(celular);
   await page.getByRole("checkbox", { name: /Aceito receber mensagens/ }).check();
   await expect(page.getByText("stub")).toBeVisible();
   await page.waitForTimeout(300);
   await page.getByRole("button", { name: "Confirmar horário" }).click();
 
   await expect(page.getByText("Pronto, tá marcado!")).toBeVisible();
+  return marcado;
+}
+
+test("cliente agenda um Corte e vê a tela Pronto", async ({ page }) => {
+  diaMarcado = await agendarCorte(page, "João Teste", "48999991234");
+});
+
+test("cliente cancela o próprio horário pelo link e o painel não o lista mais", async ({ page }) => {
+  const dia = await agendarCorte(page, "Maria Cancela", "48988887777", true);
+  await page.getByRole("link", { name: "Ver meu horário" }).click();
+  await expect(page).toHaveURL(/\/meu-horario\//);
+  await expect(page.getByRole("heading", { name: "Seu horário" })).toBeVisible();
+  await expect(page.getByText("Marcado", { exact: true })).toBeVisible();
+
+  // Voltando ao início, o horário aparece em "Seus horários".
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Seus horários" })).toBeVisible();
+  await page.getByRole("link", { name: /Corte/ }).click();
+
+  await page.getByRole("button", { name: "Cancelar horário" }).click();
+  await expect(page.getByText("Tem certeza? O horário fica livre para outra pessoa.")).toBeVisible();
+  await page.getByRole("button", { name: "Sim, cancelar" }).click();
+  await expect(page.getByText("Horário cancelado. Quando quiser, é só marcar de novo.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Marcar outro horário" })).toBeVisible();
+
+  // Recarregando o link, o horário consta como cancelado e o card some da home.
+  await page.reload();
+  await expect(page.getByText("Este horário foi cancelado.")).toBeVisible();
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Seus horários" })).toHaveCount(0);
+
+  // Painel: o dono não vê mais a Maria na agenda do dia.
+  await page.goto("/painel/entrar");
+  await page.getByLabel("E-mail").fill(EMAIL);
+  await page.getByLabel("Senha").fill(SENHA);
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page).toHaveURL(/\/painel$/);
+  await page.getByRole("button", { name: /Escolher data/ }).click();
+  const alvo = page.locator(`button[aria-label='${dia}']`);
+  if (!(await alvo.isVisible())) await page.getByRole("button", { name: "Próximo mês" }).click();
+  const resposta = page.waitForResponse((r) => r.url().includes(`/api/agenda?data=${dia}`) && r.ok());
+  await alvo.click();
+  const agenda = (await (await resposta).json()) as { atendimentos: { cliente_nome: string; status: string }[] };
+  expect(agenda.atendimentos.find((x) => x.cliente_nome === "Maria Cancela")?.status).toBe("cancelado");
+  await expect(page.getByText("0 clientes · 0 atendidos")).toBeVisible();
+  await expect(page.getByText("Maria Cancela")).toHaveCount(0);
 });
 
 test("dono vê o agendamento em Hoje e marca Chegou", async ({ page }) => {

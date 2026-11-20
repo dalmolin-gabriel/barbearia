@@ -13,12 +13,15 @@ import { buscarInfo, useCarregar, type Info } from "../hooks";
 import { normalizarTelefone } from "../../shared/telefone";
 import { diaSemanaDe } from "../../shared/tempo";
 import {
+  dataDe,
   diaExtenso,
+  horaDe,
   duracao,
   iniciais,
   mascararTelefone,
   reais,
 } from "../util";
+import { guardarMeuHorario, proximosHorarios } from "./meusHorarios";
 import { guardarReserva, type Reserva } from "./Pronto";
 
 type RespostaAgendar = {
@@ -28,6 +31,7 @@ type RespostaAgendar = {
   servicos_txt: string;
   preco_centavos: number;
   barbeiro: string;
+  tokenCliente: string;
 };
 
 const GRUPOS = [
@@ -59,6 +63,34 @@ export default function Agendar() {
     );
   }
   return <Fluxo info={info} />;
+}
+
+/** Horários marcados neste aparelho, cada um com o link para ver ou cancelar. */
+function SeusHorarios() {
+  const [lista] = useState(() => proximosHorarios());
+  if (lista.length === 0) return null;
+  return (
+    <section aria-label="Seus horários" className="cartao flex flex-col gap-2 p-3.5">
+      <h2 className="bebas text-[22px] leading-none">Seus horários</h2>
+      {lista.map((h) => (
+        <Link
+          key={h.token}
+          to={`/meu-horario/${h.token}`}
+          className="flex items-center justify-between gap-3 rounded-lg bg-superficie-alta px-3 py-2.5 text-sm"
+        >
+          <span>
+            <b className="font-semibold">
+              {diaExtenso(dataDe(h.inicio))} às {horaDe(h.inicio)}
+            </b>
+            <span className="block text-texto-suave">{h.servicos_txt}</span>
+          </span>
+          <span aria-hidden="true" className="text-ouro">
+            ›
+          </span>
+        </Link>
+      ))}
+    </section>
+  );
 }
 
 function Fluxo({ info }: { info: Info }) {
@@ -131,6 +163,7 @@ function Fluxo({ info }: { info: Info }) {
           ) : null}
         </div>
         <div className="mt-[18px] flex flex-col gap-3 px-5">
+          <SeusHorarios />
           <h1 className="bebas text-[34px]">Agende seu horário</h1>
           <p className="-mt-1.5 text-[15px] text-texto-suave">
             Escolha um serviço.
@@ -359,6 +392,12 @@ function Fluxo({ info }: { info: Info }) {
               endereco: info.barbearia.endereco,
             };
             guardarReserva(reserva);
+            guardarMeuHorario({
+              token: r.tokenCliente,
+              inicio: r.inicio,
+              servicos_txt: r.servicos_txt,
+              barbeiro: r.barbeiro,
+            });
             navegar(`/pronto/${r.id}`, { state: { reserva }, replace: true });
           }}
         />

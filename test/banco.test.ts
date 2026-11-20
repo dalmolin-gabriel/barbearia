@@ -97,10 +97,10 @@ describe("banco de dados", () => {
 });
 
 describe("aplicarMigracoes", () => {
-  it("é idempotente e registra 1 linha em _migracoes", async () => {
+  it("é idempotente e registra 2 linhas em _migracoes", async () => {
     await aplicarMigracoes(env.DB);
     await aplicarMigracoes(env.DB);
     const { results } = await env.DB.prepare("SELECT nome FROM _migracoes").all();
-    expect(results).toHaveLength(1);
+    expect(results).toHaveLength(2);
   });
 });

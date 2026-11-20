@@ -29,7 +29,8 @@ export default function Privacidade() {
         <h2 className="text-[17px] font-bold">Para que usamos</h2>
         <p className="text-[15px] text-texto-suave">
           Só para organizar a agenda e falar com você pelo WhatsApp sobre o seu horário, como o lembrete do dia anterior.
-          Não vendemos nem repassamos seus dados.
+          Ao marcar, você também recebe um link secreto para ver e cancelar o seu horário (guardamos só uma versão
+          codificada dele, e este aparelho lembra dos seus horários marcados). Não vendemos nem repassamos seus dados.
         </p>
       </section>
       <section className="flex flex-col gap-1.5">

@@ -205,6 +205,34 @@ describe("notificações push", () => {
     expect(await r.json()).toEqual({ chave: env.VAPID_PUBLIC_KEY });
   });
 
+  it("cancelamento pelo cliente avisa o barbeiro e o dono, com o texto de cancelamento", async () => {
+    await inscrever(barbeiro.id, ENDP("barbeiro"));
+    await inscrever(dono.id, ENDP("dono"));
+    await inscrever(outro.id, ENDP("outro"));
+    const criado = await req("/api/publico/agendar", {
+      metodo: "POST",
+      ip: "10.1.0.9",
+      corpo: { barbeiro: barbeiro.id, servicos: [corte], data: TERCA, hora: "14:00", nome: "João da Silva", telefone: "(11) 91234-5678", aceite: true, turnstile: "t" },
+    });
+    const { tokenCliente } = (await criado.json()) as { tokenCliente: string };
+    await esperarEnvios(2);
+    chamadas.length = 0;
+    const r = await req(`/api/publico/meu-horario/${tokenCliente}/cancelar`, { metodo: "POST", ip: "10.1.0.9" });
+    expect(r.status).toBe(200);
+    await esperarEnvios(2);
+    await new Promise((ok) => setTimeout(ok, 50));
+    expect(envios()).toEqual([ENDP("barbeiro"), ENDP("dono")]);
+    const { montarMensagemCancelamento } = await import("../src/worker/push/notificar");
+    const m = JSON.parse(
+      montarMensagemCancelamento(
+        { cliente: "João da Silva", servicos_txt: "Corte", inicio: "2026-12-03T14:00:00.000Z", barbeiro: "Zé", usuario_id: "x" },
+        "abc",
+      ),
+    );
+    expect(m.title).toBe("Horário cancelado");
+    expect(m.body).toBe("❌ João da Silva cancelou · Corte · qui 03/12 às 11:00 · com Zé");
+  });
+
   it("monta o texto no horário de Brasília", async () => {
     const { montarMensagem } = await import("../src/worker/push/notificar");
     const m = JSON.parse(

@@ -179,6 +179,14 @@ Se você tem um domínio (por exemplo `agenda.suabarbearia.com.br`) no Cloudflar
 Depois, volte ao Turnstile (passo 3) e adicione o novo domínio ao widget. Quem instalou o app
 no celular precisa instalar de novo pelo endereço novo.
 
+## Cancelamento pelo cliente
+
+Depois de marcar, o cliente recebe na tela "Pronto, tá marcado!" o botão **Ver meu horário**. Esse
+link é secreto (só quem marcou o tem) e permite cancelar sem login, **até 2 horas antes** do
+horário. O horário fica livre na hora e o barbeiro e os donos recebem a notificação "Horário
+cancelado". Faltando menos de 2 horas, a tela manda o cliente falar com a barbearia pelo WhatsApp
+(configurado no passo 7). Não é preciso configurar nada além disso.
+
 ## Atualizações
 
 Toda alteração salva na branch de produção do GitHub é publicada automaticamente pelo Cloudflare

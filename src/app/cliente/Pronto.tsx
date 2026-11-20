@@ -14,6 +14,8 @@ export type Reserva = {
   barbearia: string;
   whatsapp: string;
   endereco?: string;
+  /** Segredo do link para ver/cancelar o horário (vem do agendamento). */
+  tokenCliente?: string;
 };
 
 const chaveSessao = (id: string) => `reserva:${id}`;
@@ -111,13 +113,37 @@ export default function Pronto() {
           ["Valor", reais(r.preco_centavos)],
         ]}
       />
-      <Botao onClick={() => baixarIcs(r)}>Adicionar à minha agenda</Botao>
+      {r.tokenCliente ? (
+        <Link
+          to={`/meu-horario/${r.tokenCliente}`}
+          className="flex h-14 w-full items-center justify-center rounded-xl bg-ouro text-[17px] font-bold text-fundo"
+        >
+          Ver meu horário
+        </Link>
+      ) : null}
+      <Botao variante={r.tokenCliente ? "secundario" : "principal"} onClick={() => baixarIcs(r)}>
+        Adicionar à minha agenda
+      </Botao>
       {whats ? (
         <BotaoLink variante="secundario" href={`https://wa.me/${whats}`} target="_blank" rel="noopener noreferrer">
           Falar no WhatsApp
         </BotaoLink>
       ) : null}
-      <p className="text-center text-[13px] text-texto-suave">Precisa cancelar ou remarcar? Chama a gente no WhatsApp.</p>
+      {r.tokenCliente ? (
+        <>
+          <Link
+            to={`/meu-horario/${r.tokenCliente}`}
+            className="flex h-12 w-full items-center justify-center rounded-xl border-2 border-borda text-[15px] font-semibold text-texto-suave"
+          >
+            Cancelar este horário
+          </Link>
+          <p className="text-center text-[13px] text-texto-suave">
+            Dá para cancelar até 2 horas antes. Para remarcar, é só chamar a gente no WhatsApp.
+          </p>
+        </>
+      ) : (
+        <p className="text-center text-[13px] text-texto-suave">Precisa cancelar ou remarcar? Chama a gente no WhatsApp.</p>
+      )}
     </div>
   );
 }

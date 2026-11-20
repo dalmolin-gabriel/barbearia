@@ -16,7 +16,7 @@ function quando(inicio: string): string {
   return `${DIAS[diaSemana]} ${dia}/${mes} às ${hhmm(minutos)}`;
 }
 
-/** Texto da notificação (JSON), pronto para criptografar. */
+/** Texto da notificação de novo agendamento (JSON), pronto para criptografar. */
 export function montarMensagem(a: Atendimento, atendimentoId: string): string {
   return JSON.stringify({
     title: "Novo horário marcado",
@@ -25,12 +25,25 @@ export function montarMensagem(a: Atendimento, atendimentoId: string): string {
   });
 }
 
+/** Texto da notificação de cancelamento feito pelo cliente. */
+export function montarMensagemCancelamento(a: Atendimento, atendimentoId: string): string {
+  return JSON.stringify({
+    title: "Horário cancelado",
+    body: `❌ ${a.cliente} cancelou · ${a.servicos_txt} · ${quando(a.inicio)} · com ${a.barbeiro}`,
+    data: { url: `/painel?atendimento=${atendimentoId}` },
+  });
+}
+
 /**
- * Avisa por push o barbeiro do atendimento e todos os donos ativos de um novo agendamento online.
+ * Envia por push ao barbeiro do atendimento e a todos os donos ativos a mensagem montada por `montar`.
  * Sem chaves VAPID configuradas não faz nada. Nunca lança erro: roda em `waitUntil`, e uma falha
- * aqui não pode afetar a resposta do agendamento.
+ * aqui não pode afetar a resposta da requisição.
  */
-export async function notificarNovoAgendamento(env: Env, atendimentoId: string): Promise<void> {
+async function notificarEquipe(
+  env: Env,
+  atendimentoId: string,
+  montar: (a: Atendimento, id: string) => string,
+): Promise<void> {
   try {
     if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY || !env.VAPID_SUBJECT) return;
 
@@ -60,7 +73,7 @@ export async function notificarNovoAgendamento(env: Env, atendimentoId: string):
     for (const i of results ?? []) if (enderecoPushPermitido(i.endpoint)) porEndpoint.set(i.endpoint, i);
     if (porEndpoint.size === 0) return;
 
-    const mensagem = montarMensagem(atendimento, atendimentoId);
+    const mensagem = montar(atendimento, atendimentoId);
     const vapid = { subject: env.VAPID_SUBJECT, publicKey: env.VAPID_PUBLIC_KEY, privateKey: env.VAPID_PRIVATE_KEY };
 
     await Promise.all(
@@ -85,3 +98,11 @@ export async function notificarNovoAgendamento(env: Env, atendimentoId: string):
     console.error("Falha ao notificar", erro);
   }
 }
+
+/** Avisa a equipe de um novo agendamento online. */
+export const notificarNovoAgendamento = (env: Env, atendimentoId: string): Promise<void> =>
+  notificarEquipe(env, atendimentoId, montarMensagem);
+
+/** Avisa a equipe de que o cliente cancelou o próprio horário. */
+export const notificarCancelamento = (env: Env, atendimentoId: string): Promise<void> =>
+  notificarEquipe(env, atendimentoId, montarMensagemCancelamento);

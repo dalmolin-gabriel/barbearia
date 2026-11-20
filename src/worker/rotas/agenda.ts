@@ -42,7 +42,7 @@ const SITUACOES = [
 
 const ehDono = (c: Context<AppEnv>) => c.var.usuario.papel === "dono";
 
-const SELECT_ATENDIMENTO = `SELECT a.*, c.nome AS cliente_nome, c.telefone AS cliente_telefone, u.nome AS barbeiro_nome
+const SELECT_ATENDIMENTO = `SELECT a.id, a.cliente_id, a.usuario_id, a.servicos_txt, a.duracao_min, a.preco_centavos, a.inicio, a.fim, a.status, a.origem, a.criado_em, a.atualizado_em, c.nome AS cliente_nome, c.telefone AS cliente_telefone, u.nome AS barbeiro_nome
   FROM atendimentos a
   JOIN clientes c ON c.id = a.cliente_id
   JOIN usuarios u ON u.id = a.usuario_id`;

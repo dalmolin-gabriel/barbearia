@@ -61,6 +61,8 @@ export type NovoAtendimento = {
   limitePorCliente?: number;
   /** Só o painel usa, e só quando a equipe confirmou o aviso de horário bloqueado: ignora `bloqueios`. */
   ignorarBloqueios?: boolean;
+  /** SHA-256 (hex) do token do link do cliente; só o agendamento público informa. */
+  tokenClienteHash?: string;
 };
 
 /** Quantos atendimentos futuros ativos (`marcado`/`confirmado`) o cliente tem. */
@@ -91,8 +93,8 @@ export async function inserirSemConflito(
   const r = await db
     .prepare(
       `INSERT INTO atendimentos
-         (id, cliente_id, usuario_id, servicos_txt, duracao_min, preco_centavos, inicio, fim, status, origem, criado_em, atualizado_em)
-       SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'marcado', ?9, ?10, ?10
+         (id, cliente_id, usuario_id, servicos_txt, duracao_min, preco_centavos, inicio, fim, status, origem, criado_em, atualizado_em, token_cliente_hash)
+       SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'marcado', ?9, ?10, ?10, ?13
        WHERE NOT EXISTS (
          SELECT 1 FROM atendimentos
            WHERE usuario_id = ?3 AND status IN ('marcado', 'confirmado') AND inicio < ?8 AND fim > ?7
@@ -118,6 +120,7 @@ export async function inserirSemConflito(
       a.agora,
       a.limitePorCliente ?? null,
       a.ignorarBloqueios ? 1 : 0,
+      a.tokenClienteHash ?? null,
     )
     .run();
   return r.meta.changes === 1;

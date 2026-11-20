@@ -15,9 +15,11 @@ import {
   inserirSemConflito,
 } from "../db/consultas";
 import type { AppEnv } from "../env";
-import { notificarNovoAgendamento } from "../push/notificar";
+import { notificarCancelamento, notificarNovoAgendamento } from "../push/notificar";
 import { consumirLimite } from "../seguranca/limite";
+import { gerarTokenCliente, hashToken } from "../seguranca/tokenCliente";
 import { validarTurnstile } from "../seguranca/turnstile";
+import { CANCELAMENTO_ANTECEDENCIA_MIN, limiteCancelamento } from "../../shared/cancelamento";
 
 export const publico = new Hono<AppEnv>();
 
@@ -240,6 +242,7 @@ publico.post(
       return c.json({ erro: MSG_LIMITE_CELULAR }, 422);
 
     const id = crypto.randomUUID();
+    const { token: tokenCliente, hash: tokenClienteHash } = await gerarTokenCliente();
     const inicio = instanteUTC(d.data, minuto).toISOString();
     const fim = instanteUTC(d.data, minuto + duracao).toISOString();
     const servicosTxt = servicos.map((s) => s.nome).join(" + ");
@@ -255,6 +258,7 @@ publico.post(
       origem: "online",
       agora: agoraIso,
       limitePorCliente: MAX_FUTUROS,
+      tokenClienteHash,
     });
     if (!gravou) {
       // Nada gravado: foi o limite do celular (corrida entre requisições) ou conflito de horário?
@@ -282,8 +286,102 @@ publico.post(
         servicos_txt: servicosTxt,
         preco_centavos: preco,
         barbeiro: dono.nome,
+        tokenCliente,
       },
       201,
     );
+  },
+);
+
+// ---- Cliente vê e cancela o próprio horário pelo link secreto (sem login) ----
+
+const MSG_NAO_ENCONTRADO = "Horário não encontrado.";
+const MSG_JA_CANCELADO = "Este horário já foi cancelado.";
+const MSG_PRAZO = `Faltam menos de ${CANCELAMENTO_ANTECEDENCIA_MIN / 60} horas. Para cancelar, fale com a barbearia pelo WhatsApp.`;
+const MSG_NAO_CANCELAVEL = "Este horário não pode mais ser cancelado.";
+const TOKEN_VALIDO = /^[A-Za-z0-9_-]{20,64}$/;
+
+type MeuHorario = {
+  id: string;
+  servicos_txt: string;
+  barbeiro: string;
+  inicio: string;
+  fim: string;
+  preco_centavos: number;
+  status: string;
+};
+
+/** Busca pelo SHA-256 do token (o token em si nunca vai ao banco). */
+async function horarioDoToken(db: D1Database, token: string): Promise<MeuHorario | null> {
+  if (!TOKEN_VALIDO.test(token)) return null;
+  return db
+    .prepare(
+      `SELECT a.id, a.servicos_txt, u.nome AS barbeiro, a.inicio, a.fim, a.preco_centavos, a.status
+         FROM atendimentos a JOIN usuarios u ON u.id = a.usuario_id
+        WHERE a.token_cliente_hash = ?`,
+    )
+    .bind(await hashToken(token))
+    .first<MeuHorario>();
+}
+
+const ativo = (status: string) => status === "marcado" || status === "confirmado";
+
+async function limitarCliente(c: Context<AppEnv>, maximo: number, prefixo: string) {
+  if (await consumirLimite(c.env.DB, `${prefixo}:${ipDe(c)}`, maximo, 3600)) return null;
+  return c.json({ erro: "Muitas tentativas. Tente de novo mais tarde." }, 429);
+}
+
+publico.get("/meu-horario/:token", async (c) => {
+  const bloqueado = await limitarCliente(c, 60, "cliente");
+  if (bloqueado) return bloqueado;
+  const h = await horarioDoToken(c.env.DB, c.req.param("token"));
+  if (!h) return c.json({ erro: MSG_NAO_ENCONTRADO }, 404);
+  const limite = limiteCancelamento(h.inicio);
+  c.header("Cache-Control", "no-store");
+  return c.json({
+    ...h,
+    podeCancelar: ativo(h.status) && Date.now() <= new Date(limite).getTime(),
+    limiteCancelamento: limite,
+  });
+});
+
+publico.post(
+  "/meu-horario/:token/cancelar",
+  bodyLimit({
+    maxSize: 8 * 1024,
+    onError: (c) => c.json({ erro: "Requisição muito grande." }, 413),
+  }),
+  async (c) => {
+    const bloqueado = await limitarCliente(c, 10, "cliente-cancelar");
+    if (bloqueado) return bloqueado;
+    const db = c.env.DB;
+    const h = await horarioDoToken(db, c.req.param("token"));
+    if (!h) return c.json({ erro: MSG_NAO_ENCONTRADO }, 404);
+
+    // Um único UPDATE confere status e prazo: duas requisições paralelas não cancelam duas vezes.
+    const agora = new Date();
+    const r = await db
+      .prepare(
+        `UPDATE atendimentos SET status = 'cancelado', atualizado_em = ?2
+          WHERE id = ?1 AND status IN ('marcado', 'confirmado') AND ?2 <= ?3`,
+      )
+      .bind(h.id, agora.toISOString(), limiteCancelamento(h.inicio))
+      .run();
+    if (r.meta.changes !== 1) {
+      const atual = await horarioDoToken(db, c.req.param("token"));
+      if (atual?.status === "cancelado") return c.json({ erro: MSG_JA_CANCELADO }, 409);
+      if (atual && ativo(atual.status)) return c.json({ erro: MSG_PRAZO }, 422);
+      return c.json({ erro: MSG_NAO_CANCELAVEL }, 409);
+    }
+
+    const aviso = notificarCancelamento(c.env, h.id).catch((erro) =>
+      console.error("Falha ao notificar", erro),
+    );
+    try {
+      c.executionCtx.waitUntil(aviso);
+    } catch {
+      // Sem executionCtx (ambiente de teste direto): o aviso já está em andamento.
+    }
+    return c.json({ ok: true });
   },
 );

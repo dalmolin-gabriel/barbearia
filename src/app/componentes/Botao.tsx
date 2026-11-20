@@ -1,12 +1,13 @@
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
 
-type Variante = "principal" | "secundario" | "whatsapp" | "contorno";
+type Variante = "principal" | "secundario" | "whatsapp" | "contorno" | "perigo";
 
 const VARIANTES: Record<Variante, string> = {
   principal: "bg-ouro text-fundo",
   secundario: "bg-superficie-alta text-texto",
   whatsapp: "bg-zap text-white",
   contorno: "border-2 border-ouro text-ouro",
+  perigo: "border-2 border-erro text-erro",
 };
 
 type Comum = {

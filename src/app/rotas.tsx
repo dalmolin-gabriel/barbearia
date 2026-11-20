@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Carregando } from "./componentes/Carregando";
 import Agendar from "./cliente/Agendar";
+import MeuHorario from "./cliente/MeuHorario";
 import Pronto from "./cliente/Pronto";
 import Privacidade from "./cliente/Privacidade";
 import PainelLayout from "./painel/PainelLayout";
@@ -24,6 +25,7 @@ export function Rotas() {
         <Routes>
           <Route path="/" element={<Agendar />} />
           <Route path="/pronto/:id" element={<Pronto />} />
+          <Route path="/meu-horario/:token" element={<MeuHorario />} />
           <Route path="/privacidade" element={<Privacidade />} />
           <Route path="/painel/entrar" element={<Login />} />
           <Route path="/painel/cadastro" element={<Cadastro />} />
