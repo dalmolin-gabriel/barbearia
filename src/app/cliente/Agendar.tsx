@@ -12,7 +12,13 @@ import { Linhas } from "../componentes/Topo";
 import { buscarInfo, useCarregar, type Info } from "../hooks";
 import { normalizarTelefone } from "../../shared/telefone";
 import { diaSemanaDe } from "../../shared/tempo";
-import { diaExtenso, duracao, iniciais, mascararTelefone, reais } from "../util";
+import {
+  diaExtenso,
+  duracao,
+  iniciais,
+  mascararTelefone,
+  reais,
+} from "../util";
 import { guardarReserva, type Reserva } from "./Pronto";
 
 type RespostaAgendar = {
@@ -35,7 +41,12 @@ const minutosDe = (hora: string) => {
 };
 
 export default function Agendar() {
-  const { dados: info, erro, carregando, recarregar } = useCarregar(() => buscarInfo(true), []);
+  const {
+    dados: info,
+    erro,
+    carregando,
+    recarregar,
+  } = useCarregar(() => buscarInfo(true), []);
 
   if (carregando && !info) return <Carregando />;
   if (!info) {
@@ -78,7 +89,7 @@ function Fluxo({ info }: { info: Info }) {
     [barbeiro, data, chaveServicos, etapa],
   );
 
-  const alternar = (id: string) => setEscolhidos((atual) => (atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id]));
+  const escolher = (id: string) => setEscolhidos([id]);
 
   const escolherBarbeiro = (id: string) => {
     setBarbeiro(id);
@@ -99,54 +110,82 @@ function Fluxo({ info }: { info: Info }) {
     })).filter((g) => g.itens.length);
   }, [vagas.dados]);
 
-  const barbeiroNome = info.barbeiros.find((b) => b.id === barbeiro)?.nome ?? "";
+  const barbeiroNome =
+    info.barbeiros.find((b) => b.id === barbeiro)?.nome ?? "";
 
   if (etapa === 1) {
     return (
       <div className="mx-auto max-w-[480px] pb-10 lg:max-w-xl">
         <div className="flex flex-col items-center gap-2.5 pt-[30px]">
-          <Logo tamanho={170} className="shadow-[0_0_40px_rgba(208,184,72,0.25)]" />
-          <p className="text-center text-[15px] text-texto">Escolha seu horário e a gente te espera ✂️</p>
-          {info.barbearia.endereco ? <p className="text-[13px] text-texto-suave">{info.barbearia.endereco}</p> : null}
+          <Logo
+            tamanho={170}
+            className="shadow-[0_0_40px_rgba(208,184,72,0.25)]"
+          />
+          <p className="text-center text-[15px] text-texto">
+            Escolha seu horário e a gente te espera ✂️
+          </p>
+          {info.barbearia.endereco ? (
+            <p className="text-[13px] text-texto-suave">
+              {info.barbearia.endereco}
+            </p>
+          ) : null}
         </div>
         <div className="mt-[18px] flex flex-col gap-3 px-5">
           <h1 className="bebas text-[34px]">Agende seu horário</h1>
-          <p className="-mt-1.5 text-[15px] text-texto-suave">Escolha o que você quer fazer. Dá para marcar mais de um.</p>
-          {info.servicos.length === 0 ? <Aviso tipo="info">Nenhum serviço disponível no momento.</Aviso> : null}
-          <div className="flex flex-col gap-2.5">
+          <p className="-mt-1.5 text-[15px] text-texto-suave">
+            Escolha um serviço.
+          </p>
+          {info.servicos.length === 0 ? (
+            <Aviso tipo="info">Nenhum serviço disponível no momento.</Aviso>
+          ) : null}
+          <div
+            role="radiogroup"
+            aria-label="Serviço"
+            className="flex flex-col gap-2.5"
+          >
             {info.servicos.map((s) => {
               const on = escolhidos.includes(s.id);
               return (
                 <button
                   key={s.id}
                   type="button"
-                  role="checkbox"
+                  role="radio"
                   aria-checked={on}
-                  onClick={() => alternar(s.id)}
+                  onClick={() => escolher(s.id)}
                   className={`flex items-center gap-3.5 rounded-[14px] bg-superficie px-4 py-[15px] text-left ${on ? "border-2 border-ouro" : "border border-borda"}`}
                 >
                   <span
-                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[15px] font-bold ${on ? "bg-ouro text-fundo" : "border border-borda bg-superficie-alta"}`}
+                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[15px] font-bold ${on ? "bg-ouro text-fundo" : "border border-borda bg-superficie-alta"}`}
                   >
                     {on ? "✓" : ""}
                   </span>
                   <span className="flex-1">
-                    <span className="block text-[17px] font-semibold">{s.nome}</span>
-                    <span className="block text-sm text-texto-suave">{duracao(s.duracao_min)}</span>
+                    <span className="block text-[17px] font-semibold">
+                      {s.nome}
+                    </span>
+                    <span className="block text-sm text-texto-suave">
+                      {duracao(s.duracao_min)}
+                    </span>
                   </span>
-                  <b className="text-[17px] text-ouro">{reais(s.preco_centavos)}</b>
+                  <b className="text-[17px] text-ouro">
+                    {reais(s.preco_centavos)}
+                  </b>
                 </button>
               );
             })}
           </div>
           <p className="text-[15px] text-texto-suave">
-            {servicos.length} {servicos.length === 1 ? "serviço" : "serviços"} · {duracao(totalMin)} ·{" "}
+            {servicos.length === 1 ? `${nomeServicos} · ` : ""}
+            {duracao(totalMin)} ·{" "}
             <b className="text-texto">{reais(totalPreco)}</b>
           </p>
           <Botao disabled={escolhidos.length === 0} onClick={() => setEtapa(2)}>
             Continuar
           </Botao>
-          <Link to="/privacidade" className="text-center text-[13px] text-texto-suave underline">
+          <Link
+            to="/privacidade"
+            className="text-center text-[13px] text-texto-suave underline"
+          >
             Aviso de privacidade
           </Link>
         </div>
@@ -165,7 +204,9 @@ function Fluxo({ info }: { info: Info }) {
         >
           ←
         </button>
-        <h1 className="bebas flex-1 text-[28px] leading-none">Escolha o horário</h1>
+        <h1 className="bebas flex-1 text-[28px] leading-none">
+          Escolha o horário
+        </h1>
         <Logo tamanho={48} />
       </header>
 
@@ -177,7 +218,11 @@ function Fluxo({ info }: { info: Info }) {
           <b className="flex-1 text-[15px] font-semibold">
             {nomeServicos} · {duracao(totalMin)}
           </b>
-          <button type="button" onClick={() => setEtapa(1)} className="text-sm font-semibold text-ouro">
+          <button
+            type="button"
+            onClick={() => setEtapa(1)}
+            className="text-sm font-semibold text-ouro"
+          >
             Alterar
           </button>
         </div>
@@ -201,7 +246,11 @@ function Fluxo({ info }: { info: Info }) {
                     >
                       {iniciais(b.nome)}
                     </span>
-                    <span className={`mt-1.5 text-sm ${on ? "font-bold text-ouro" : "font-medium"}`}>{b.nome}</span>
+                    <span
+                      className={`mt-1.5 text-sm ${on ? "font-bold text-ouro" : "font-medium"}`}
+                    >
+                      {b.nome}
+                    </span>
                   </button>
                 );
               })}
@@ -220,8 +269,12 @@ function Fluxo({ info }: { info: Info }) {
               />
               {sabadoLimite ? (
                 <div className="mt-2 rounded-[10px] bg-superficie-alta px-3 py-2.5 text-[13px]">
-                  <b className="font-semibold">Agenda aberta até {diaExtenso(sabadoLimite, true)}.</b>
-                  <div className="text-texto-suave">A próxima semana (seg a sáb) abre no sábado às 23h.</div>
+                  <b className="font-semibold">
+                    Agenda aberta até {diaExtenso(sabadoLimite, true)}.
+                  </b>
+                  <div className="text-texto-suave">
+                    A próxima semana (seg a sáb) abre no sábado às 23h.
+                  </div>
                 </div>
               ) : null}
             </div>
@@ -230,15 +283,21 @@ function Fluxo({ info }: { info: Info }) {
           <div className="flex flex-col gap-3.5">
             {data ? (
               <>
-                <h2 className="text-[17px] font-bold">{diaExtenso(data)} · horários livres</h2>
+                <h2 className="text-[17px] font-bold">
+                  {diaExtenso(data)} · horários livres
+                </h2>
                 {!barbeiro ? (
-                  <Aviso tipo="info">Escolha o barbeiro para ver os horários.</Aviso>
+                  <Aviso tipo="info">
+                    Escolha o barbeiro para ver os horários.
+                  </Aviso>
                 ) : vagas.carregando ? (
                   <Carregando />
                 ) : vagas.erro ? (
                   <Aviso>{vagas.erro}</Aviso>
                 ) : grupos.length === 0 ? (
-                  <Aviso tipo="info">Sem horários livres neste dia. Escolha outro dia.</Aviso>
+                  <Aviso tipo="info">
+                    Sem horários livres neste dia. Escolha outro dia.
+                  </Aviso>
                 ) : (
                   grupos.map((g) => (
                     <div key={g.nome} className="flex flex-col gap-2.5">
@@ -246,7 +305,8 @@ function Fluxo({ info }: { info: Info }) {
                         <b className="text-[15px] font-semibold">{g.nome}</b>
                         <span className="h-px flex-1 bg-borda" />
                         <span className="text-xs text-texto-suave">
-                          {g.itens.length} {g.itens.length === 1 ? "horário" : "horários"}
+                          {g.itens.length}{" "}
+                          {g.itens.length === 1 ? "horário" : "horários"}
                         </span>
                       </div>
                       <div className="grid grid-cols-3 gap-2.5">
@@ -267,7 +327,9 @@ function Fluxo({ info }: { info: Info }) {
                 )}
               </>
             ) : (
-              <p className="text-sm text-texto-suave">Escolha um dia para ver os horários livres.</p>
+              <p className="text-sm text-texto-suave">
+                Escolha um dia para ver os horários livres.
+              </p>
             )}
           </div>
         </div>
@@ -336,7 +398,8 @@ function Confirmar({
 
   async function enviar() {
     if (!nome.trim()) return setErro("Informe seu nome.");
-    if (!normalizarTelefone(telefone)) return setErro("Informe um celular com DDD válido.");
+    if (!normalizarTelefone(telefone))
+      return setErro("Informe um celular com DDD válido.");
     if (!aceite) return setErro("Marque a caixinha para continuar.");
     if (!token) return setErro("Aguarde a verificação anti-robô terminar.");
     setEnviando(true);
@@ -371,11 +434,18 @@ function Confirmar({
         <div className="flex items-center gap-3">
           <Logo tamanho={52} />
           <div>
-            <h2 className="bebas text-[28px] leading-none">Confirme seu horário</h2>
-            <p className="text-sm text-texto-suave">Falta só seu nome e telefone</p>
+            <h2 className="bebas text-[28px] leading-none">
+              Confirme seu horário
+            </h2>
+            <p className="text-sm text-texto-suave">
+              Falta só seu nome e telefone
+            </p>
           </div>
         </div>
-        <Linhas className="rounded-xl bg-superficie-alta px-4 py-3.5 text-sm" itens={resumo} />
+        <Linhas
+          className="rounded-xl bg-superficie-alta px-4 py-3.5 text-sm"
+          itens={resumo}
+        />
         <div>
           <label className="rotulo block" htmlFor="nome">
             Seu nome
@@ -414,7 +484,11 @@ function Confirmar({
           />
           <span className="text-[13px] text-texto-suave">
             Aceito receber mensagens no WhatsApp sobre meu horário.{" "}
-            <Link to="/privacidade" target="_blank" className="text-ouro underline">
+            <Link
+              to="/privacidade"
+              target="_blank"
+              className="text-ouro underline"
+            >
               Ver aviso de privacidade
             </Link>
             .
@@ -423,10 +497,17 @@ function Confirmar({
         {indisponivel ? (
           <Aviso>Agendamento temporariamente indisponível.</Aviso>
         ) : (
-          <Turnstile chave={info.turnstileSiteKey} aoToken={aoToken} reiniciar={reiniciar} />
+          <Turnstile
+            chave={info.turnstileSiteKey}
+            aoToken={aoToken}
+            reiniciar={reiniciar}
+          />
         )}
         {erro ? <Aviso>{erro}</Aviso> : null}
-        <Botao disabled={indisponivel || enviando} onClick={() => void enviar()}>
+        <Botao
+          disabled={indisponivel || enviando}
+          onClick={() => void enviar()}
+        >
           {enviando ? "Confirmando…" : "Confirmar horário"}
         </Botao>
       </div>

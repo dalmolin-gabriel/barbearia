@@ -82,6 +82,8 @@ publico.get("/info", async (c) => {
   });
 });
 
+const MSG_UM_SERVICO = "Escolha apenas um serviço.";
+
 const consultaVagas = z.object({
   barbeiro: z.string().min(1).max(64),
   data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -94,6 +96,7 @@ publico.get("/vagas", async (c) => {
   const analise = consultaVagas.safeParse(c.req.query());
   if (!analise.success) return c.json({ erro: MSG_INVALIDO }, 400);
   const { barbeiro, data, servicos: ids } = analise.data;
+  if (ids.split(",").length !== 1) return c.json({ erro: MSG_UM_SERVICO }, 400);
   const db = c.env.DB;
   const [dono, servicos] = await Promise.all([
     barbeiroAtivo(db, barbeiro),
@@ -121,7 +124,9 @@ function urlVerificacaoLocal(valor: string | undefined): string | undefined {
   if (!valor) return undefined;
   try {
     const { hostname } = new URL(valor);
-    return hostname === "127.0.0.1" || hostname === "localhost" ? valor : undefined;
+    return hostname === "127.0.0.1" || hostname === "localhost"
+      ? valor
+      : undefined;
   } catch {
     return undefined;
   }
@@ -155,7 +160,12 @@ publico.post(
     const token = (bruto as { turnstile?: unknown }).turnstile;
     if (
       typeof token !== "string" ||
-      !(await validarTurnstile(token, ip, c.env.TURNSTILE_SECRET, urlVerificacaoLocal(c.env.TURNSTILE_VERIFY_URL)))
+      !(await validarTurnstile(
+        token,
+        ip,
+        c.env.TURNSTILE_SECRET,
+        urlVerificacaoLocal(c.env.TURNSTILE_VERIFY_URL),
+      ))
     )
       return c.json(
         {
@@ -168,6 +178,7 @@ publico.post(
     const analise = corpoAgendar.safeParse(bruto);
     if (!analise.success) return c.json({ erro: MSG_INVALIDO }, 400);
     const d = analise.data;
+    if (d.servicos.length !== 1) return c.json({ erro: MSG_UM_SERVICO }, 400);
     const telefone = normalizarTelefone(d.telefone);
     if (!telefone)
       return c.json({ erro: "Informe um celular com DDD válido." }, 400);

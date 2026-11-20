@@ -84,7 +84,7 @@ const contar = async (tabela: string) =>
 
 const corpoValido = (extra: Record<string, unknown> = {}) => ({
   barbeiro,
-  servicos: [corte, barba],
+  servicos: [corte],
   data: TERCA,
   hora: "11:00",
   nome: "João da Silva",
@@ -142,7 +142,9 @@ describe("API pública de agendamento", () => {
       const original = env.TURNSTILE_SITE_KEY;
       delete (env as { TURNSTILE_SITE_KEY?: string }).TURNSTILE_SITE_KEY;
       try {
-        const j = (await (await req("/api/publico/info", { ip: novoIp() })).json()) as any;
+        const j = (await (
+          await req("/api/publico/info", { ip: novoIp() })
+        ).json()) as any;
         expect(j.turnstileSiteKey).toBe("");
       } finally {
         env.TURNSTILE_SITE_KEY = original;
@@ -156,6 +158,12 @@ describe("API pública de agendamento", () => {
         `/api/publico/vagas?barbeiro=${barbeiro}&data=${data}&servicos=${servicos}`,
         { ip: novoIp() },
       );
+
+    it("mais de um serviço: 400", async () => {
+      const r = await vagas(TERCA, `${corte},${barba}`);
+      expect(r.status).toBe(400);
+      expect(await r.json()).toEqual({ erro: "Escolha apenas um serviço." });
+    });
 
     it("hoje começa às 10:30", async () => {
       const j = (await (await vagas(TERCA)).json()) as { horarios: string[] };
@@ -197,20 +205,20 @@ describe("API pública de agendamento", () => {
   });
 
   describe("agendar", () => {
-    it("válido: 201, preço 7000, duração 50", async () => {
+    it("válido: 201, preço 4000, duração 30", async () => {
       const r = await agendar(corpoValido());
       expect(r.status).toBe(201);
       const j = (await r.json()) as any;
-      expect(j.preco_centavos).toBe(7000);
-      expect(j.servicos_txt).toBe("Corte + Barba");
+      expect(j.preco_centavos).toBe(4000);
+      expect(j.servicos_txt).toBe("Corte");
       expect(j.barbeiro).toBe("Zé");
       expect(j.inicio).toBe("2026-12-01T14:00:00.000Z");
-      expect(j.fim).toBe("2026-12-01T14:50:00.000Z");
+      expect(j.fim).toBe("2026-12-01T14:30:00.000Z");
       const linha = await env.DB.prepare(
         "SELECT duracao_min, origem, status FROM atendimentos",
       ).first<any>();
       expect(linha).toEqual({
-        duracao_min: 50,
+        duracao_min: 30,
         origem: "online",
         status: "marcado",
       });
@@ -444,11 +452,17 @@ describe("API pública de agendamento", () => {
         400,
       );
     });
-    it("serviços repetidos ou em excesso: 400", async () => {
+    it("serviços repetidos ou vazios: 400", async () => {
       expect(
         (await agendar(corpoValido({ servicos: [corte, corte] }))).status,
       ).toBe(400);
       expect((await agendar(corpoValido({ servicos: [] }))).status).toBe(400);
+    });
+    it("mais de um serviço: 400 com mensagem e nada gravado", async () => {
+      const r = await agendar(corpoValido({ servicos: [corte, barba] }));
+      expect(r.status).toBe(400);
+      expect(await r.json()).toEqual({ erro: "Escolha apenas um serviço." });
+      expect(await contar("atendimentos")).toBe(0);
     });
     it("Turnstile reprovado: 403", async () => {
       vi.restoreAllMocks();
@@ -481,7 +495,9 @@ describe("API pública de agendamento", () => {
       (env as any).TURNSTILE_VERIFY_URL = "https://evil.example/verify";
       try {
         expect((await agendar(corpoValido())).status).toBe(201);
-        expect(chamadas[0]).toBe("https://challenges.cloudflare.com/turnstile/v0/siteverify");
+        expect(chamadas[0]).toBe(
+          "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+        );
       } finally {
         delete (env as any).TURNSTILE_VERIFY_URL;
       }

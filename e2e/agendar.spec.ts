@@ -56,7 +56,7 @@ test("cliente agenda um Corte e vê a tela Pronto", async ({ page }) => {
   await page.goto("/");
 
   // 1. Serviço (os de exemplo vêm do cadastro)
-  await page.locator("[role=checkbox]", { has: page.getByText("Corte", { exact: true }) }).click();
+  await page.locator("[role=radio]", { has: page.getByText("Corte", { exact: true }) }).click();
   await page.getByRole("button", { name: "Continuar" }).click();
 
   // 2. Barbeiro; primeiro dia habilitado que tenha horário livre
