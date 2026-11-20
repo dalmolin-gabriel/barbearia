@@ -1,24 +1,12 @@
 // Formatação de datas (sempre Brasília), dinheiro e telefone para a interface.
+import { formatarReais } from "../shared/dinheiro";
 import { diaSemanaDe, hhmm, partesLocais, somarDias } from "../shared/tempo";
 
 export const NOME_PADRAO = "Barbearia dos Padilhas";
 
 const DIAS = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
 const DIAS_CURTOS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-const MESES = [
-  "Janeiro",
-  "Fevereiro",
-  "Março",
-  "Abril",
-  "Maio",
-  "Junho",
-  "Julho",
-  "Agosto",
-  "Setembro",
-  "Outubro",
-  "Novembro",
-  "Dezembro",
-];
+const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
 export const nomeMes = (mes: number) => MESES[mes - 1] ?? "";
 export const diaCurto = (diaSemana: number) => DIAS_CURTOS[diaSemana] ?? "";
@@ -59,15 +47,8 @@ export function horaDe(iso: string): string {
   return hhmm(partesLocais(new Date(iso)).minutos);
 }
 
-const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 });
-/** 6500 -> 'R$ 65' (com centavos só quando houver). */
-export function reais(centavos: number): string {
-  const v = centavos / 100;
-  const f = Number.isInteger(v)
-    ? moeda.format(v)
-    : v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  return f.replace(/ /g, " ");
-}
+/** 6500 -> 'R$ 65,00' (sempre com centavos). */
+export const reais = formatarReais;
 
 /** 50 -> '50 min'; 90 -> '1h30'; 120 -> '2h' */
 export function duracao(min: number): string {
@@ -96,7 +77,20 @@ export const iniciais = (nome: string) =>
     .join("");
 
 /** Minutos entre agora e um instante ISO (arredondado). */
-export const minutosAte = (iso: string, agora = Date.now()) =>
-  Math.round((new Date(iso).getTime() - agora) / 60_000);
+export const minutosAte = (iso: string, agora = Date.now()) => Math.round((new Date(iso).getTime() - agora) / 60_000);
+
+/** 'Bom dia' / 'Boa tarde' / 'Boa noite' pela hora de Brasília. */
+export function saudacao(agora = new Date()): string {
+  const h = Math.floor(partesLocais(agora).minutos / 60);
+  return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
+}
+
+const MESES_MIN = MESES.map((m) => m.toLowerCase());
+const DIAS_COMPLETOS = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+/** 'AAAA-MM-DD' -> 'quinta-feira, 20 de novembro' */
+export function dataPorExtenso(data: string): string {
+  const [, m = "1", d = "1"] = data.split("-");
+  return `${DIAS_COMPLETOS[diaSemanaDe(data)] ?? ""}, ${Number(d)} de ${MESES_MIN[Number(m) - 1] ?? ""}`;
+}
 
 export { somarDias, diaSemanaDe };

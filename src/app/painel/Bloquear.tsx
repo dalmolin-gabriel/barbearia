@@ -26,7 +26,7 @@ export default function Bloquear({
   const eu = useSessao();
   const dono = eu.papel === "dono";
   const barbeiros = useBarbeiros();
-  const [quem, setQuem] = useState(eu.id);
+  const [quem, setQuem] = useState(dono && diaInteiroInicial ? TODA : eu.id);
   const [data, setData] = useState(dataInicial);
   const [diaInteiro, setDiaInteiro] = useState(diaInteiroInicial);
   const [horaIni, setHoraIni] = useState("12:00");

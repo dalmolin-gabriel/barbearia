@@ -78,8 +78,7 @@ function Fluxo({ info }: { info: Info }) {
     [barbeiro, data, chaveServicos, etapa],
   );
 
-  const alternar = (id: string) =>
-    setEscolhidos((atual) => (atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id]));
+  const alternar = (id: string) => setEscolhidos((atual) => (atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id]));
 
   const escolherBarbeiro = (id: string) => {
     setBarbeiro(id);
@@ -94,23 +93,25 @@ function Fluxo({ info }: { info: Info }) {
   const sabadoLimite = info.dias[info.dias.length - 1];
   const grupos = useMemo(() => {
     const horarios = vagas.dados?.horarios ?? [];
-    return GRUPOS.map((g) => ({ ...g, itens: horarios.filter((h) => g.cabe(minutosDe(h))) })).filter((g) => g.itens.length);
+    return GRUPOS.map((g) => ({
+      ...g,
+      itens: horarios.filter((h) => g.cabe(minutosDe(h))),
+    })).filter((g) => g.itens.length);
   }, [vagas.dados]);
 
   const barbeiroNome = info.barbeiros.find((b) => b.id === barbeiro)?.nome ?? "";
 
   if (etapa === 1) {
     return (
-      <div className="mx-auto max-w-[480px] pb-10">
+      <div className="mx-auto max-w-[480px] pb-10 lg:max-w-xl">
         <div className="flex flex-col items-center gap-2.5 pt-[30px]">
           <Logo tamanho={170} className="shadow-[0_0_40px_rgba(208,184,72,0.25)]" />
+          <p className="text-center text-[15px] text-texto">Escolha seu horário e a gente te espera ✂️</p>
           {info.barbearia.endereco ? <p className="text-[13px] text-texto-suave">{info.barbearia.endereco}</p> : null}
         </div>
         <div className="mt-[18px] flex flex-col gap-3 px-5">
           <h1 className="bebas text-[34px]">Agende seu horário</h1>
-          <p className="-mt-1.5 text-[15px] text-texto-suave">
-            Escolha o que você quer fazer. Dá para marcar mais de um.
-          </p>
+          <p className="-mt-1.5 text-[15px] text-texto-suave">Escolha o que você quer fazer. Dá para marcar mais de um.</p>
           {info.servicos.length === 0 ? <Aviso tipo="info">Nenhum serviço disponível no momento.</Aviso> : null}
           <div className="flex flex-col gap-2.5">
             {info.servicos.map((s) => {
@@ -154,8 +155,8 @@ function Fluxo({ info }: { info: Info }) {
   }
 
   return (
-    <div className="mx-auto max-w-[480px] pb-10">
-      <header className="flex items-center gap-3 px-5 pb-3 pt-[18px]">
+    <div className="mx-auto max-w-[480px] pb-10 lg:max-w-5xl">
+      <header className="flex items-center gap-3 px-5 pb-3 pt-[18px] lg:px-8 lg:pt-8">
         <button
           type="button"
           aria-label="Voltar"
@@ -168,7 +169,7 @@ function Fluxo({ info }: { info: Info }) {
         <Logo tamanho={48} />
       </header>
 
-      <div className="flex flex-col gap-3.5 px-5">
+      <div className="flex flex-col gap-3.5 px-5 lg:px-8">
         {aviso ? <Aviso>{aviso}</Aviso> : null}
 
         <div className="cartao flex items-center gap-2.5 px-3.5 py-3">
@@ -181,89 +182,95 @@ function Fluxo({ info }: { info: Info }) {
           </button>
         </div>
 
-        <h2 className="text-[17px] font-bold">Escolha o barbeiro</h2>
-        <div className="flex flex-wrap gap-6">
-          {info.barbeiros.map((b) => {
-            const on = b.id === barbeiro;
-            return (
-              <button
-                key={b.id}
-                type="button"
-                aria-pressed={on}
-                onClick={() => escolherBarbeiro(b.id)}
-                className="flex flex-col items-center"
-              >
-                <span
-                  className={`bebas flex h-[72px] w-[72px] items-center justify-center rounded-full bg-superficie-alta text-[28px] ${on ? "border-[3px] border-ouro text-ouro" : "border border-borda"}`}
-                >
-                  {iniciais(b.nome)}
-                </span>
-                <span className={`mt-1.5 text-sm ${on ? "font-bold text-ouro" : "font-medium"}`}>{b.nome}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="cartao px-2.5 py-3.5">
-          <Calendario
-            mes={mes}
-            diasHabilitados={info.dias}
-            selecionado={data}
-            riscados={(d) => diaSemanaDe(d) === 0}
-            aoEscolher={escolherData}
-            aoMudarMes={setMes}
-            mesMinimo={primeiroMes}
-            mesMaximo={ultimoMes}
-          />
-          {sabadoLimite ? (
-            <div className="mt-2 rounded-[10px] bg-superficie-alta px-3 py-2.5 text-[13px]">
-              <b className="font-semibold">Agenda aberta até {diaExtenso(sabadoLimite, true)}.</b>
-              <div className="text-texto-suave">A próxima semana (seg a sáb) abre no sábado às 23h.</div>
-            </div>
-          ) : null}
-        </div>
-
-        {data ? (
-          <>
-            <h2 className="text-[17px] font-bold">{diaExtenso(data)} · horários livres</h2>
-            {!barbeiro ? (
-              <Aviso tipo="info">Escolha o barbeiro para ver os horários.</Aviso>
-            ) : vagas.carregando ? (
-              <Carregando />
-            ) : vagas.erro ? (
-              <Aviso>{vagas.erro}</Aviso>
-            ) : grupos.length === 0 ? (
-              <Aviso tipo="info">Sem horários livres neste dia. Escolha outro dia.</Aviso>
-            ) : (
-              grupos.map((g) => (
-                <div key={g.nome} className="flex flex-col gap-2.5">
-                  <div className="flex items-center gap-2.5">
-                    <b className="text-[15px] font-semibold">{g.nome}</b>
-                    <span className="h-px flex-1 bg-borda" />
-                    <span className="text-xs text-texto-suave">
-                      {g.itens.length} {g.itens.length === 1 ? "horário" : "horários"}
+        <div className="flex flex-col gap-3.5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8">
+          <div className="flex flex-col gap-3.5">
+            <h2 className="text-[17px] font-bold">Escolha o barbeiro</h2>
+            <div className="flex flex-wrap gap-6">
+              {info.barbeiros.map((b) => {
+                const on = b.id === barbeiro;
+                return (
+                  <button
+                    key={b.id}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => escolherBarbeiro(b.id)}
+                    className="flex flex-col items-center"
+                  >
+                    <span
+                      className={`bebas flex h-[72px] w-[72px] items-center justify-center rounded-full bg-superficie-alta text-[28px] ${on ? "border-[3px] border-ouro text-ouro" : "border border-borda"}`}
+                    >
+                      {iniciais(b.nome)}
                     </span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2.5">
-                    {g.itens.map((h) => (
-                      <button
-                        key={h}
-                        type="button"
-                        aria-pressed={h === hora}
-                        onClick={() => setHora(h)}
-                        className={`flex h-12 items-center justify-center rounded-[10px] border text-base font-semibold ${h === hora ? "border-ouro bg-ouro text-fundo" : "border-borda bg-superficie"}`}
-                      >
-                        {h}
-                      </button>
-                    ))}
-                  </div>
+                    <span className={`mt-1.5 text-sm ${on ? "font-bold text-ouro" : "font-medium"}`}>{b.nome}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="cartao px-2.5 py-3.5">
+              <Calendario
+                mes={mes}
+                diasHabilitados={info.dias}
+                selecionado={data}
+                riscados={(d) => diaSemanaDe(d) === 0}
+                aoEscolher={escolherData}
+                aoMudarMes={setMes}
+                mesMinimo={primeiroMes}
+                mesMaximo={ultimoMes}
+              />
+              {sabadoLimite ? (
+                <div className="mt-2 rounded-[10px] bg-superficie-alta px-3 py-2.5 text-[13px]">
+                  <b className="font-semibold">Agenda aberta até {diaExtenso(sabadoLimite, true)}.</b>
+                  <div className="text-texto-suave">A próxima semana (seg a sáb) abre no sábado às 23h.</div>
                 </div>
-              ))
+              ) : null}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3.5">
+            {data ? (
+              <>
+                <h2 className="text-[17px] font-bold">{diaExtenso(data)} · horários livres</h2>
+                {!barbeiro ? (
+                  <Aviso tipo="info">Escolha o barbeiro para ver os horários.</Aviso>
+                ) : vagas.carregando ? (
+                  <Carregando />
+                ) : vagas.erro ? (
+                  <Aviso>{vagas.erro}</Aviso>
+                ) : grupos.length === 0 ? (
+                  <Aviso tipo="info">Sem horários livres neste dia. Escolha outro dia.</Aviso>
+                ) : (
+                  grupos.map((g) => (
+                    <div key={g.nome} className="flex flex-col gap-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <b className="text-[15px] font-semibold">{g.nome}</b>
+                        <span className="h-px flex-1 bg-borda" />
+                        <span className="text-xs text-texto-suave">
+                          {g.itens.length} {g.itens.length === 1 ? "horário" : "horários"}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2.5">
+                        {g.itens.map((h) => (
+                          <button
+                            key={h}
+                            type="button"
+                            aria-pressed={h === hora}
+                            onClick={() => setHora(h)}
+                            className={`flex h-12 items-center justify-center rounded-[10px] border text-base font-semibold ${h === hora ? "border-ouro bg-ouro text-fundo" : "border-borda bg-superficie"}`}
+                          >
+                            {h}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-texto-suave">Escolha um dia para ver os horários livres.</p>
             )}
-          </>
-        ) : (
-          <p className="text-sm text-texto-suave">Escolha um dia para ver os horários livres.</p>
-        )}
+          </div>
+        </div>
       </div>
 
       {data && hora && barbeiro ? (
@@ -336,7 +343,13 @@ function Confirmar({
     setErro(null);
     try {
       const r = await api<RespostaAgendar>("/api/publico/agendar", {
-        corpo: { ...corpo, nome: nome.trim(), telefone, aceite: true, turnstile: token },
+        corpo: {
+          ...corpo,
+          nome: nome.trim(),
+          telefone,
+          aceite: true,
+          turnstile: token,
+        },
       });
       aoSucesso(r);
     } catch (e) {

@@ -9,12 +9,17 @@ const VARIANTES: Record<Variante, string> = {
   contorno: "border-2 border-ouro text-ouro",
 };
 
-type Comum = { variante?: Variante; pequeno?: boolean; children: ReactNode };
+type Comum = {
+  variante?: Variante;
+  pequeno?: boolean;
+  compacto?: boolean;
+  children: ReactNode;
+};
 
-function classes(v: Variante, pequeno: boolean | undefined, extra?: string) {
+function classes(v: Variante, pequeno: boolean | undefined, extra?: string, compacto?: boolean) {
   return [
-    "flex w-full items-center justify-center rounded-xl font-bold transition-opacity active:opacity-80 disabled:cursor-not-allowed disabled:opacity-40",
-    pequeno ? "h-12 text-[15px]" : "h-14 text-[17px]",
+    "flex items-center justify-center rounded-xl font-bold transition-opacity active:opacity-80 disabled:cursor-not-allowed disabled:opacity-40",
+    compacto ? "h-10 whitespace-nowrap px-4 text-sm" : `w-full ${pequeno ? "h-12 text-[15px]" : "h-14 text-[17px]"}`,
     VARIANTES[v],
     extra,
   ]
@@ -25,13 +30,14 @@ function classes(v: Variante, pequeno: boolean | undefined, extra?: string) {
 export function Botao({
   variante = "principal",
   pequeno,
+  compacto,
   className,
   children,
   type = "button",
   ...resto
 }: Comum & ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button type={type} className={classes(variante, pequeno, className)} {...resto}>
+    <button type={type} className={classes(variante, pequeno, className, compacto)} {...resto}>
       {children}
     </button>
   );
@@ -41,12 +47,13 @@ export function Botao({
 export function BotaoLink({
   variante = "principal",
   pequeno,
+  compacto,
   className,
   children,
   ...resto
 }: Comum & AnchorHTMLAttributes<HTMLAnchorElement>) {
   return (
-    <a className={classes(variante, pequeno, className)} {...resto}>
+    <a className={classes(variante, pequeno, className, compacto)} {...resto}>
       {children}
     </a>
   );

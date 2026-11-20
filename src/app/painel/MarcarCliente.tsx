@@ -7,7 +7,7 @@ import { Folha } from "../componentes/Folha";
 import { buscarInfo, type Info } from "../hooks";
 import { normalizarTelefone } from "../../shared/telefone";
 import { useSessao } from "../sessao";
-import { dataDe, duracao, horaDe, mascararTelefone, reais } from "../util";
+import { dataDe, duracao, horaDe, mascararTelefone, primeiroNome, reais } from "../util";
 import type { Atend } from "./tipos";
 
 export const TEXTO_AVISO: Record<string, string> = {
@@ -69,7 +69,7 @@ export default function MarcarCliente({
   remarcar,
 }: {
   aoFechar: () => void;
-  aoSalvo: () => void;
+  aoSalvo: (mensagem?: string) => void;
   dataInicial: string;
   remarcar?: Atend;
 }) {
@@ -98,8 +98,7 @@ export default function MarcarCliente({
     };
   }, [remarcar]);
 
-  const alternar = (id: string) =>
-    setEscolhidos((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
+  const alternar = (id: string) => setEscolhidos((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
 
   async function enviar(confirmarAvisos: boolean) {
     setErro(null);
@@ -111,7 +110,7 @@ export default function MarcarCliente({
           metodo: "PATCH",
           corpo: { data, hora, ...(dono ? { usuarioId } : {}) },
         });
-        aoSalvo();
+        aoSalvo(`Pronto! Remarcado para ${hora}.`);
         return;
       }
       if (!nome.trim()) return setErro("Informe o nome do cliente.");
@@ -132,7 +131,7 @@ export default function MarcarCliente({
         setAvisos(r.avisos);
         return;
       }
-      aoSalvo();
+      aoSalvo(`Pronto! ${primeiroNome(nome)} marcado para ${hora}.`);
     } catch (e) {
       setErro(mensagemDe(e));
     } finally {
@@ -176,7 +175,9 @@ export default function MarcarCliente({
             <div>
               <div className="rotulo">Serviços</div>
               {!info ? (
-                erro ? null : <Carregando />
+                erro ? null : (
+                  <Carregando />
+                )
               ) : (
                 <div className="flex flex-col gap-2">
                   {info.servicos.map((s) => {

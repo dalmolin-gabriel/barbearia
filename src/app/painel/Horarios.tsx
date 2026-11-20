@@ -3,7 +3,8 @@ import { api, mensagemDe } from "../api";
 import { Aviso } from "../componentes/Aviso";
 import { Botao } from "../componentes/Botao";
 import { Carregando } from "../componentes/Carregando";
-import { Chave, Topo } from "../componentes/Topo";
+import { Chave } from "../componentes/Topo";
+import { Pagina } from "../componentes/Pagina";
 import { useCarregar } from "../hooks";
 import { useSessao } from "../sessao";
 import { hhmm } from "../../shared/tempo";
@@ -20,7 +21,13 @@ type Dia = {
   almoco_ini_min: number | null;
   almoco_fim_min: number | null;
 };
-type MembroEquipe = { id: string; nome: string; usuario: string; papel: string; ativo: number | boolean };
+type MembroEquipe = {
+  id: string;
+  nome: string;
+  usuario: string;
+  papel: string;
+  ativo: number | boolean;
+};
 
 const ORDEM = [1, 2, 3, 4, 5, 6, 0];
 
@@ -36,7 +43,20 @@ function resumoDia(d: Dia): string {
   const base = `${hhmm(d.inicio_min)} – ${hhmm(d.fim_min)}`;
   if (d.almoco_ini_min === null || d.almoco_fim_min === null) return base;
   const dur = d.almoco_fim_min - d.almoco_ini_min;
-  return dur === 60 ? `${base} · almoço ${hora12(d.almoco_ini_min)}` : `${base} · almoço ${hhmm(d.almoco_ini_min)}–${hhmm(d.almoco_fim_min)}`;
+  return dur === 60
+    ? `${base} · almoço ${hora12(d.almoco_ini_min)}`
+    : `${base} · almoço ${hhmm(d.almoco_ini_min)}–${hhmm(d.almoco_fim_min)}`;
+}
+
+function partesDia(d: Dia): { horario: string; almoco: string } {
+  if (!d.aberto) return { horario: "Fechado", almoco: "—" };
+  const horario = `${hhmm(d.inicio_min)} – ${hhmm(d.fim_min)}`;
+  if (d.almoco_ini_min === null || d.almoco_fim_min === null) return { horario, almoco: "Sem almoço" };
+  const dur = d.almoco_fim_min - d.almoco_ini_min;
+  return {
+    horario,
+    almoco: dur === 60 ? `Almoço ${hora12(d.almoco_ini_min)}` : `Almoço ${hhmm(d.almoco_ini_min)}–${hhmm(d.almoco_fim_min)}`,
+  };
 }
 
 function periodoBloqueio(b: Bloq): string {
@@ -74,7 +94,8 @@ export default function Horarios() {
 
   const hoje = hojeLocal();
   const folgas = useCarregar(() => api<{ bloqueios: Bloq[] }>(`/api/bloqueios?de=${hoje}&ate=${somarDias(hoje, 92)}`), [hoje]);
-  const nomeDe = (id: string | null) => (id === null ? "Barbearia toda" : `Só ${barbeiros.find((b) => b.id === id)?.nome ?? (id === eu.id ? eu.nome : "outro barbeiro")}`);
+  const nomeDe = (id: string | null) =>
+    id === null ? "Barbearia toda" : `Só ${barbeiros.find((b) => b.id === id)?.nome ?? (id === eu.id ? eu.nome : "outro barbeiro")}`;
 
   const mudar = (dia: number, parte: Partial<Dia>) => {
     setDias((atual) => (atual ? atual.map((d) => (d.dia_semana === dia ? { ...d, ...parte } : d)) : atual));
@@ -85,7 +106,8 @@ export default function Horarios() {
     if (!dias) return;
     for (const d of dias) {
       if (d.aberto && d.fim_min <= d.inicio_min) return setErro(`${diaCurto(d.dia_semana)}: o fim precisa ser depois do início.`);
-      if ((d.almoco_ini_min === null) !== (d.almoco_fim_min === null)) return setErro(`${diaCurto(d.dia_semana)}: preencha o início e o fim do almoço.`);
+      if ((d.almoco_ini_min === null) !== (d.almoco_fim_min === null))
+        return setErro(`${diaCurto(d.dia_semana)}: preencha o início e o fim do almoço.`);
     }
     setSalvando(true);
     setErro(null);
@@ -113,130 +135,161 @@ export default function Horarios() {
   }
 
   return (
-    <div className="flex flex-col">
-      <Topo sub={dono ? "Quando a barbearia abre" : "Seus horários"} titulo="Horários e folgas" />
-      <div className="flex flex-col gap-2.5 px-5 pb-6">
-        {dono && barbeiros.length > 1 ? (
-          <div className="flex flex-wrap gap-2 text-[13px] font-semibold" role="group" aria-label="Barbeiro">
-            {barbeiros.map((b) => (
-              <button
-                key={b.id}
-                type="button"
-                aria-pressed={b.id === usuarioId}
-                onClick={() => {
-                  setDias(null);
-                  setUsuarioId(b.id);
-                }}
-                className={`rounded-full px-3.5 py-[7px] ${b.id === usuarioId ? "bg-ouro text-fundo" : "bg-superficie-alta"}`}
-              >
-                {b.nome}
-              </button>
-            ))}
-          </div>
-        ) : null}
-
-        {expediente.erro ? <Aviso>{expediente.erro}</Aviso> : null}
-        {!dias && expediente.carregando ? <Carregando /> : null}
-        {dias ? (
-          <div className="cartao px-3.5 py-2">
-            {ORDEM.map((n) => {
-              const d = dias.find((x) => x.dia_semana === n);
-              if (!d) return null;
-              const aberta = !!d.aberto;
-              const expandido = dono && aberto === n && aberta;
-              return (
-                <div key={n} className="py-[7px]">
-                  <div className="flex items-center gap-2.5">
-                    <b className="w-9 text-sm">{diaCurto(n)}</b>
-                    <button
-                      type="button"
-                      disabled={!dono || !aberta}
-                      onClick={() => setAberto(expandido ? null : n)}
-                      className={`flex-1 text-left text-sm ${aberta ? "text-texto" : "text-apagado"}`}
-                    >
-                      {resumoDia(d)}
-                    </button>
-                    <Chave
-                      ligada={aberta}
-                      rotulo={`${diaCurto(n)} aberto`}
-                      aoMudar={dono ? (v) => mudar(n, { aberto: v }) : undefined}
-                    />
-                  </div>
-                  {expandido ? (
-                    <div className="mt-2 grid grid-cols-2 gap-2.5 rounded-xl bg-superficie-alta p-3">
-                      {(
-                        [
-                          ["Abre", "inicio_min"],
-                          ["Fecha", "fim_min"],
-                          ["Almoço começa", "almoco_ini_min"],
-                          ["Almoço termina", "almoco_fim_min"],
-                        ] as const
-                      ).map(([rotulo, campo]) => (
-                        <div key={campo}>
-                          <label className="mb-1 block text-xs text-texto-suave" htmlFor={`${campo}-${n}`}>
-                            {rotulo}
-                          </label>
-                          <input
-                            id={`${campo}-${n}`}
-                            type="time"
-                            className="campo !p-2.5"
-                            value={d[campo] === null ? "" : hhmm(d[campo])}
-                            onChange={(e) => {
-                              const v = paraMin(e.target.value);
-                              if (v !== null || campo.startsWith("almoco")) mudar(n, { [campo]: v } as Partial<Dia>);
-                            }}
-                          />
-                        </div>
-                      ))}
-                      <button
-                        type="button"
-                        className="col-span-2 text-left text-[13px] font-semibold text-ouro"
-                        onClick={() => mudar(n, { almoco_ini_min: null, almoco_fim_min: null })}
-                      >
-                        Sem almoço neste dia
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        ) : null}
-        {dono && sujo ? (
-          <Botao disabled={salvando} onClick={() => void salvar()}>
-            {salvando ? "Salvando…" : "Salvar horários"}
-          </Botao>
-        ) : null}
-        {!dono ? <p className="text-xs text-texto-suave">Só o dono muda o horário de funcionamento.</p> : null}
-
-        <div className="cartao flex flex-col gap-2.5 p-3.5">
-          <b className="text-base">Dias fechados e folgas</b>
-          {folgas.erro ? <Aviso>{folgas.erro}</Aviso> : null}
-          {folgas.dados && folgas.dados.bloqueios.length === 0 ? (
-            <p className="text-[13px] text-texto-suave">Nenhuma folga marcada pelos próximos 3 meses.</p>
+    <Pagina
+      titulo="Horários e folgas"
+      sub={dono ? "Quando a barbearia abre" : "Seus horários"}
+      acoes={
+        <>
+          {dono && sujo ? (
+            <Botao compacto disabled={salvando} onClick={() => void salvar()}>
+              {salvando ? "Salvando…" : "Salvar horários"}
+            </Botao>
           ) : null}
-          {(folgas.dados?.bloqueios ?? []).map((b) => (
-            <div key={b.id} className="flex items-center gap-2.5">
-              <span className="pilula text-ouro">{ddmm(dataDe(b.inicio))}</span>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold">{periodoBloqueio(b)}</div>
-                <div className="text-xs text-texto-suave">{nomeDe(b.usuario_id)}</div>
-              </div>
-              {dono || b.usuario_id === eu.id ? (
-                <button type="button" aria-label="Remover" onClick={() => void remover(b)} className="px-2 text-lg text-texto-suave">
-                  ✕
-                </button>
-              ) : null}
-            </div>
-          ))}
-          <Botao pequeno onClick={() => setFechando(true)}>
+          <Botao compacto variante="secundario" onClick={() => setFechando(true)}>
             + Fechar um dia
           </Botao>
+        </>
+      }
+    >
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
+        <div className="flex flex-col gap-3">
+          {dono && barbeiros.length > 1 ? (
+            <div className="flex flex-wrap gap-2 text-sm font-semibold" role="group" aria-label="Barbeiro">
+              {barbeiros.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  aria-pressed={b.id === usuarioId}
+                  onClick={() => {
+                    setDias(null);
+                    setUsuarioId(b.id);
+                  }}
+                  className={`rounded-full px-4 py-2 ${b.id === usuarioId ? "bg-ouro text-fundo" : "bg-superficie-alta"}`}
+                >
+                  {b.nome}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {expediente.erro ? <Aviso>{expediente.erro}</Aviso> : null}
+          {!dias && expediente.carregando ? <Carregando /> : null}
+          {dias ? (
+            <div className="cartao overflow-hidden">
+              <div className="hidden grid-cols-[64px_minmax(0,1.2fr)_minmax(0,1fr)_50px] gap-4 border-b border-borda px-5 py-3 text-xs font-semibold uppercase tracking-wider text-texto-suave md:grid">
+                <span>Dia</span>
+                <span>Horário</span>
+                <span>Almoço</span>
+                <span />
+              </div>
+              {ORDEM.map((n) => {
+                const d = dias.find((x) => x.dia_semana === n);
+                if (!d) return null;
+                const aberta = !!d.aberto;
+                const expandido = dono && aberto === n && aberta;
+                const partes = partesDia(d);
+                return (
+                  <div key={n} className="border-b border-borda px-5 py-3 last:border-b-0">
+                    <div className="flex items-center gap-3 md:grid md:grid-cols-[64px_minmax(0,1.2fr)_minmax(0,1fr)_50px] md:gap-4">
+                      <b className="w-10 text-sm md:w-auto">{diaCurto(n)}</b>
+                      <button
+                        type="button"
+                        disabled={!dono || !aberta}
+                        onClick={() => setAberto(expandido ? null : n)}
+                        className={`flex-1 text-left text-sm ${aberta ? "text-texto" : "text-apagado"}`}
+                      >
+                        <span className="md:hidden">{resumoDia(d)}</span>
+                        <span className="hidden md:inline">{partes.horario}</span>
+                      </button>
+                      <span className={`hidden text-sm md:block ${aberta ? "text-texto-suave" : "text-apagado"}`}>{partes.almoco}</span>
+                      <div className="md:flex md:justify-end">
+                        <Chave
+                          ligada={aberta}
+                          rotulo={`${diaCurto(n)} aberto`}
+                          aoMudar={dono ? (v) => mudar(n, { aberto: v }) : undefined}
+                        />
+                      </div>
+                    </div>
+                    {expandido ? (
+                      <div className="mt-3 grid grid-cols-2 gap-3 rounded-xl bg-superficie-alta p-3.5 md:grid-cols-4">
+                        {(
+                          [
+                            ["Abre", "inicio_min"],
+                            ["Fecha", "fim_min"],
+                            ["Almoço começa", "almoco_ini_min"],
+                            ["Almoço termina", "almoco_fim_min"],
+                          ] as const
+                        ).map(([rotulo, campo]) => (
+                          <div key={campo}>
+                            <label className="mb-1 block text-xs text-texto-suave" htmlFor={`${campo}-${n}`}>
+                              {rotulo}
+                            </label>
+                            <input
+                              id={`${campo}-${n}`}
+                              type="time"
+                              className="campo !p-2.5"
+                              value={d[campo] === null ? "" : hhmm(d[campo])}
+                              onChange={(e) => {
+                                const v = paraMin(e.target.value);
+                                if (v !== null || campo.startsWith("almoco")) mudar(n, { [campo]: v } as Partial<Dia>);
+                              }}
+                            />
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          className="col-span-2 text-left text-[13px] font-semibold text-ouro md:col-span-4"
+                          onClick={() =>
+                            mudar(n, {
+                              almoco_ini_min: null,
+                              almoco_fim_min: null,
+                            })
+                          }
+                        >
+                          Sem almoço neste dia
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+          {dono && sujo ? (
+            <Botao className="lg:hidden" disabled={salvando} onClick={() => void salvar()}>
+              {salvando ? "Salvando…" : "Salvar horários"}
+            </Botao>
+          ) : null}
+          {!dono ? <p className="text-xs text-texto-suave">Só o dono muda o horário de funcionamento.</p> : null}
         </div>
-        {erro ? <Aviso>{erro}</Aviso> : null}
-        <p className="text-xs text-texto-suave">
-          Os clientes marcam de segunda a sábado da semana atual. A semana seguinte abre no sábado às 23h.
-        </p>
+
+        <div className="flex flex-col gap-3">
+          <div className="cartao flex flex-col gap-3 p-5">
+            <b className="text-base">Dias fechados e folgas</b>
+            {folgas.erro ? <Aviso>{folgas.erro}</Aviso> : null}
+            {folgas.dados && folgas.dados.bloqueios.length === 0 ? (
+              <p className="text-[13px] text-texto-suave">Nenhuma folga marcada pelos próximos 3 meses.</p>
+            ) : null}
+            {(folgas.dados?.bloqueios ?? []).map((b) => (
+              <div key={b.id} className="flex items-center gap-3">
+                <span className="pilula text-ouro">{ddmm(dataDe(b.inicio))}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold">{periodoBloqueio(b)}</div>
+                  <div className="text-xs text-texto-suave">{nomeDe(b.usuario_id)}</div>
+                </div>
+                {dono || b.usuario_id === eu.id ? (
+                  <button type="button" aria-label="Remover" onClick={() => void remover(b)} className="px-2 text-lg text-texto-suave">
+                    ✕
+                  </button>
+                ) : null}
+              </div>
+            ))}
+          </div>
+          {erro ? <Aviso>{erro}</Aviso> : null}
+          <p className="text-xs text-texto-suave">
+            Os clientes marcam de segunda a sábado da semana atual. A semana seguinte abre no sábado às 23h.
+          </p>
+        </div>
       </div>
 
       {fechando ? (
@@ -251,6 +304,6 @@ export default function Horarios() {
           }}
         />
       ) : null}
-    </div>
+    </Pagina>
   );
 }

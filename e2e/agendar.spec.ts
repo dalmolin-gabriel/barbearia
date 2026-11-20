@@ -39,7 +39,11 @@ test("cadastro aberto cria o dono e depois fecha", async ({ page }) => {
   await page.getByLabel("E-mail").fill(EMAIL);
   await page.getByRole("button", { name: "Criar conta" }).click();
   await expect(page).toHaveURL(/\/painel$/);
+  // No celular o menu é uma gaveta: abre pelo botão ☰ e mostra a navegação.
+  await page.getByRole("button", { name: "Abrir menu" }).click();
   await expect(page.getByRole("navigation", { name: "Menu do painel" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("navigation", { name: "Menu do painel" })).toBeHidden();
 
   // Depois de criada, o cadastro fecha e o endereço antigo redireciona.
   await page.goto("/painel/primeiro-acesso");
@@ -111,8 +115,9 @@ test("dono zera o sistema e o Cadastre-se volta", async ({ page }) => {
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page).toHaveURL(/\/painel$/);
 
+  await page.getByRole("button", { name: "Abrir menu" }).click();
   await page.getByRole("navigation", { name: "Menu do painel" }).getByRole("link", { name: /Equipe/ }).click();
-  await expect(page.getByText(EMAIL)).toBeVisible();
+  await expect(page.getByText(EMAIL).locator("visible=true")).toBeVisible();
   const zerar = page.getByRole("button", { name: "Zerar sistema" });
   await expect(page.getByText("Zerar sistema e entregar para o dono")).toBeVisible();
   await expect(zerar).toBeDisabled();

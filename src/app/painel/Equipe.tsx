@@ -5,13 +5,19 @@ import { Aviso } from "../componentes/Aviso";
 import { Botao } from "../componentes/Botao";
 import { Carregando } from "../componentes/Carregando";
 import { Folha } from "../componentes/Folha";
-import { Topo } from "../componentes/Topo";
+import { Avatar } from "../componentes/Avatar";
+import { Pagina } from "../componentes/Pagina";
 import { useCarregar } from "../hooks";
 import { useSessao } from "../sessao";
-import { iniciais } from "../util";
 import Notificacoes from "./Notificacoes";
 
-type Membro = { id: string; nome: string; usuario: string; papel: "dono" | "barbeiro"; ativo: number | boolean };
+type Membro = {
+  id: string;
+  nome: string;
+  usuario: string;
+  papel: "dono" | "barbeiro";
+  ativo: number | boolean;
+};
 
 export default function Equipe() {
   const eu = useSessao();
@@ -25,43 +31,93 @@ export default function Equipe() {
     void lista.recarregar();
   };
 
+  const equipe = lista.dados?.equipe ?? [];
+  const colunas = "md:grid-cols-[minmax(0,1.4fr)_minmax(0,1.6fr)_110px_90px_70px]";
+
   return (
-    <div className="flex flex-col">
-      <Topo sub="Só o dono vê esta tela" titulo="Equipe" />
-      <div className="flex flex-col gap-2.5 px-5 pb-6">
-        {lista.erro ? <Aviso>{lista.erro}</Aviso> : null}
-        {lista.carregando && !lista.dados ? <Carregando /> : null}
-        {(lista.dados?.equipe ?? []).map((m) => (
-          <div key={m.id} className={`cartao flex items-center gap-3 p-3.5 ${m.ativo ? "" : "opacity-60"}`}>
-            <div className="bebas flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full bg-superficie-alta text-[22px] text-ouro">
-              {iniciais(m.nome)}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-base font-semibold">{m.nome}</div>
-              <div className="truncate text-xs text-texto-suave">{m.usuario}</div>
-              <span className={`pilula ${m.papel === "dono" ? "text-ouro" : "text-texto-suave"}`}>
-                {m.papel === "dono" ? "Dono" : "Barbeiro"}
-              </span>
-              {m.ativo ? null : <span className="pilula ml-1.5 text-texto-suave">Inativo</span>}
-            </div>
-            <button type="button" onClick={() => setEditando(m)} className="text-sm font-semibold text-ouro" aria-label={`Editar ${m.nome}`}>
-              Editar
-            </button>
-          </div>
-        ))}
-        <Botao variante="secundario" onClick={() => setCadastrando(true)}>
+    <Pagina
+      titulo="Equipe"
+      sub="Só o dono vê esta tela"
+      acoes={
+        <Botao compacto onClick={() => setCadastrando(true)}>
           + Cadastrar barbeiro
         </Botao>
-        <Notificacoes />
-        {eu.papel === "dono" ? <ZerarSistema /> : null}
-        <Link to="/painel/clientes" className="rounded-xl bg-superficie-alta py-3 text-center text-[15px] font-semibold text-ouro">
-          Clientes e privacidade ›
-        </Link>
+      }
+    >
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="flex flex-col gap-3">
+          {lista.erro ? <Aviso>{lista.erro}</Aviso> : null}
+          {lista.carregando && !lista.dados ? <Carregando /> : null}
+          {equipe.length ? (
+            <div className="cartao overflow-hidden">
+              <div
+                className={`hidden gap-4 border-b border-borda px-5 py-3 text-xs font-semibold uppercase tracking-wider text-texto-suave md:grid ${colunas}`}
+              >
+                <span>Nome</span>
+                <span>E-mail</span>
+                <span>Papel</span>
+                <span>Situação</span>
+                <span />
+              </div>
+              {equipe.map((m) => (
+                <div
+                  key={m.id}
+                  className={`flex items-center gap-3 border-b border-borda px-5 py-3.5 last:border-b-0 md:grid md:gap-4 ${colunas} ${m.ativo ? "" : "opacity-60"}`}
+                >
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <Avatar nome={m.nome} tamanho={44} />
+                    <div className="min-w-0">
+                      <div className="truncate text-base font-semibold">{m.nome}</div>
+                      <div className="truncate text-xs text-texto-suave md:hidden">{m.usuario}</div>
+                      <span className="md:hidden">
+                        <span className={`pilula ${m.papel === "dono" ? "text-ouro" : "text-texto-suave"}`}>
+                          {m.papel === "dono" ? "Dono" : "Barbeiro"}
+                        </span>
+                        {m.ativo ? null : <span className="pilula ml-1.5 text-texto-suave">Inativo</span>}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="hidden truncate text-sm text-texto-suave md:block">{m.usuario}</div>
+                  <div className="hidden md:block">
+                    <span className={`pilula ${m.papel === "dono" ? "text-ouro" : "text-texto-suave"}`}>
+                      {m.papel === "dono" ? "Dono" : "Barbeiro"}
+                    </span>
+                  </div>
+                  <div className="hidden md:block">
+                    <span className={`pilula ${m.ativo ? "text-ok" : "text-texto-suave"}`}>{m.ativo ? "Ativo" : "Inativo"}</span>
+                  </div>
+                  <div className="md:text-right">
+                    <button
+                      type="button"
+                      onClick={() => setEditando(m)}
+                      className="text-sm font-semibold text-ouro"
+                      aria-label={`Editar ${m.nome}`}
+                    >
+                      Editar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <Link
+            to="/painel/clientes"
+            className="rounded-xl bg-superficie-alta py-3 text-center text-[15px] font-semibold text-ouro lg:hidden"
+          >
+            Clientes e privacidade ›
+          </Link>
+        </div>
+        <div className="flex flex-col gap-4">
+          <Notificacoes />
+          {eu.papel === "dono" ? <ZerarSistema /> : null}
+        </div>
       </div>
 
-      {editando ? <EditarMembro membro={editando} ehEu={editando.id === eu.id} aoFechar={() => setEditando(null)} aoSalvo={salvou} /> : null}
+      {editando ? (
+        <EditarMembro membro={editando} ehEu={editando.id === eu.id} aoFechar={() => setEditando(null)} aoSalvo={salvou} />
+      ) : null}
       {cadastrando ? <NovoMembro aoFechar={() => setCadastrando(false)} aoSalvo={salvou} /> : null}
-    </div>
+    </Pagina>
   );
 }
 
@@ -78,7 +134,9 @@ function NovoMembro({ aoFechar, aoSalvo }: { aoFechar: () => void; aoSalvo: () =
     setEnviando(true);
     setErro(null);
     try {
-      await api("/api/equipe", { corpo: { nome: nome.trim(), email: email.trim(), senha } });
+      await api("/api/equipe", {
+        corpo: { nome: nome.trim(), email: email.trim(), senha },
+      });
       aoSalvo();
     } catch (e) {
       setErro(mensagemDe(e));
@@ -128,17 +186,7 @@ function NovoMembro({ aoFechar, aoSalvo }: { aoFechar: () => void; aoSalvo: () =
   );
 }
 
-function EditarMembro({
-  membro,
-  ehEu,
-  aoFechar,
-  aoSalvo,
-}: {
-  membro: Membro;
-  ehEu: boolean;
-  aoFechar: () => void;
-  aoSalvo: () => void;
-}) {
+function EditarMembro({ membro, ehEu, aoFechar, aoSalvo }: { membro: Membro; ehEu: boolean; aoFechar: () => void; aoSalvo: () => void }) {
   const [nome, setNome] = useState(membro.nome);
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -179,14 +227,27 @@ function EditarMembro({
           <label className="rotulo block" htmlFor="e-senha">
             Trocar senha (deixe em branco para manter)
           </label>
-          <input id="e-senha" className="campo" type="text" autoComplete="off" placeholder="Nova senha, mínimo 8" value={senha} onChange={(e) => setSenha(e.target.value)} />
+          <input
+            id="e-senha"
+            className="campo"
+            type="text"
+            autoComplete="off"
+            placeholder="Nova senha, mínimo 8"
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
+          />
         </div>
         {erro ? <Aviso>{erro}</Aviso> : null}
         <Botao disabled={enviando} onClick={salvar}>
           {enviando ? "Salvando…" : "Salvar"}
         </Botao>
         {ehEu ? null : (
-          <Botao variante="secundario" className={ativo ? "!text-erro" : "!text-ok"} disabled={enviando} onClick={() => void enviar({ ativo: !ativo })}>
+          <Botao
+            variante="secundario"
+            className={ativo ? "!text-erro" : "!text-ok"}
+            disabled={enviando}
+            onClick={() => void enviar({ ativo: !ativo })}
+          >
             {ativo ? "Desativar" : "Reativar"}
           </Botao>
         )}
@@ -208,7 +269,9 @@ function ZerarSistema() {
     setEnviando(true);
     setErro(null);
     try {
-      await api("/api/sistema/zerar", { corpo: { senha, confirmacao: confirmacao.trim() } });
+      await api("/api/sistema/zerar", {
+        corpo: { senha, confirmacao: confirmacao.trim() },
+      });
       navegar("/painel/cadastro", { replace: true });
     } catch (e) {
       setErro(mensagemDe(e));
@@ -222,15 +285,22 @@ function ZerarSistema() {
         Zerar sistema e entregar para o dono
       </h2>
       <p className="text-sm text-texto-suave">
-        Apaga todas as contas (inclusive a sua), clientes, agendamentos, bloqueios e as inscrições de notificação. Mantém os
-        serviços, os preços e as configurações. Depois disso, a tela de entrada volta a mostrar &quot;Cadastre-se&quot; para
-        o dono criar a conta dele. Não dá para desfazer.
+        Apaga todas as contas (inclusive a sua), clientes, agendamentos, bloqueios e as inscrições de notificação. Mantém os serviços, os
+        preços e as configurações. Depois disso, a tela de entrada volta a mostrar &quot;Cadastre-se&quot; para o dono criar a conta dele.
+        Não dá para desfazer.
       </p>
       <div>
         <label className="rotulo block" htmlFor="z-senha">
           Sua senha atual
         </label>
-        <input id="z-senha" className="campo" type="password" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} />
+        <input
+          id="z-senha"
+          className="campo"
+          type="password"
+          autoComplete="current-password"
+          value={senha}
+          onChange={(e) => setSenha(e.target.value)}
+        />
       </div>
       <div>
         <label className="rotulo block" htmlFor="z-confirmacao">

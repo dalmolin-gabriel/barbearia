@@ -56,7 +56,7 @@
     @apply font-bebas font-normal tracking-[0.04em];
   }
   .cartao {
-    @apply rounded-[14px] border border-borda bg-superficie;
+    @apply rounded-2xl border border-borda bg-superficie shadow-[0_1px_2px_rgba(0,0,0,0.35)];
   }
   .campo {
     @apply w-full rounded-[10px] border border-borda bg-fundo p-3.5 text-base text-texto outline-none placeholder:text-apagado focus:border-ouro;
