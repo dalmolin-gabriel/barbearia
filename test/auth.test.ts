@@ -5,8 +5,8 @@ import { criarUsuario, req, tokenDoCookie } from "./ajuda";
 
 // Cada login usa um IP próprio para não esbarrar no limite por IP (testado em limite.test.ts).
 let proximoIp = 0;
-const entrar = (usuario: string, senha: string) =>
-  req("/api/auth/entrar", { metodo: "POST", corpo: { usuario, senha }, ip: `192.0.2.${++proximoIp % 250}-${proximoIp}` });
+const entrar = (email: string, senha: string) =>
+  req("/api/auth/entrar", { metodo: "POST", corpo: { email, senha }, ip: `192.0.2.${++proximoIp % 250}-${proximoIp}` });
 
 describe("senha", () => {
   it("confere a certa, rejeita a errada e usa sal diferente a cada hash", async () => {
@@ -46,31 +46,33 @@ describe("login", () => {
     expect((await req("/api/auth/eu", { token })).status).toBe(200);
   });
 
-  it("usuário é case-insensitive", async () => {
-    const u = await criarUsuario("dono", { usuario: "MariaSilva" });
-    expect((await entrar("mariasilva", u.senha)).status).toBe(200);
+  it("e-mail é case-insensitive e ignora espaços nas pontas", async () => {
+    const u = await criarUsuario("dono", { usuario: "mariasilva@exemplo.com" });
+    expect((await entrar(" MariaSilva@Exemplo.com ", u.senha)).status).toBe(200);
   });
 
   it("usuário inexistente e senha errada dão a mesma resposta 401", async () => {
     const u = await criarUsuario("barbeiro");
     const a = await entrar(u.usuario, "errada");
-    const b = await entrar("ninguem-existe", "errada");
+    const b = await entrar("ninguem-existe@exemplo.com", "errada");
     expect(a.status).toBe(401);
     expect(b.status).toBe(401);
-    expect(await a.json()).toEqual({ erro: "Usuário ou senha incorretos." });
-    expect(await b.json()).toEqual({ erro: "Usuário ou senha incorretos." });
+    expect(await a.json()).toEqual({ erro: "E-mail ou senha incorretos." });
+    expect(await b.json()).toEqual({ erro: "E-mail ou senha incorretos." });
   });
 
   it("usuário inativo recebe 401", async () => {
     const u = await criarUsuario("barbeiro", { ativo: false });
     const r = await entrar(u.usuario, u.senha);
     expect(r.status).toBe(401);
-    expect(await r.json()).toEqual({ erro: "Usuário ou senha incorretos." });
+    expect(await r.json()).toEqual({ erro: "E-mail ou senha incorretos." });
   });
 
   it("corpo inválido dá 400", async () => {
-    const r = await req("/api/auth/entrar", { metodo: "POST", corpo: { usuario: 1 } });
+    const r = await req("/api/auth/entrar", { metodo: "POST", corpo: { email: 1 } });
     expect(r.status).toBe(400);
+    for (const email of ["maria", "maria@", `${"a".repeat(250)}@x.com`])
+      expect((await entrar(email, "x")).status, email).toBe(400);
   });
 
   it("bloqueia na 5ª falha, mesmo com a senha certa, e libera depois do prazo", async () => {

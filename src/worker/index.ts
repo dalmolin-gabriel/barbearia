@@ -4,15 +4,16 @@ import type { AppEnv } from "./env";
 import { agenda, atendimentos } from "./rotas/agenda";
 import { auth } from "./rotas/auth";
 import { bloqueios } from "./rotas/bloqueios";
+import { cadastro } from "./rotas/cadastro";
 import { clientes } from "./rotas/clientes";
 import { equipe } from "./rotas/equipe";
 import { expediente } from "./rotas/expediente";
-import { primeiroAcesso } from "./rotas/primeiro-acesso";
 import { publico } from "./rotas/publico";
 import { push } from "./rotas/push";
 import { resumo } from "./rotas/resumo";
 import { saude } from "./rotas/saude";
 import { servicos } from "./rotas/servicos";
+import { sistema } from "./rotas/sistema";
 import { cabecalhos, conferirOrigem } from "./seguranca/middleware";
 
 export const app = new Hono<AppEnv>();
@@ -39,7 +40,7 @@ app.use("/api/*", async (c, proximo) => {
 
 app.route("/api/saude", saude);
 app.route("/api/auth", auth);
-app.route("/api/primeiro-acesso", primeiroAcesso);
+app.route("/api/cadastro", cadastro);
 app.route("/api/publico", publico);
 app.route("/api/push", push);
 app.route("/api/agenda", agenda);
@@ -50,5 +51,6 @@ app.route("/api/expediente", expediente);
 app.route("/api/equipe", equipe);
 app.route("/api/resumo", resumo);
 app.route("/api/clientes", clientes);
+app.route("/api/sistema", sistema);
 
 export default { fetch: app.fetch };

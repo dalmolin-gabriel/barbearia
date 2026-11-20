@@ -67,7 +67,7 @@ describe("limite por IP no login", () => {
   it("bloqueia a 21ª tentativa do mesmo IP, sem afetar outro IP", async () => {
     // Usuário diferente a cada tentativa, para não acionar o bloqueio por usuário.
     const entrar = (ip: string) =>
-      req("/api/auth/entrar", { metodo: "POST", corpo: { usuario: `x-${crypto.randomUUID()}`, senha: "x" }, ip });
+      req("/api/auth/entrar", { metodo: "POST", corpo: { email: `x-${crypto.randomUUID()}@exemplo.com`, senha: "x" }, ip });
     const ip = `10.0.0.${Math.floor(Math.random() * 200) + 1}`;
     for (let i = 0; i < 20; i++) expect((await entrar(ip)).status).toBe(401);
     const bloqueada = await entrar(ip);

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, type FormEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { api, mensagemDe } from "../api";
 import { Aviso } from "../componentes/Aviso";
 import { Botao } from "../componentes/Botao";
@@ -38,6 +38,7 @@ export default function Equipe() {
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-base font-semibold">{m.nome}</div>
+              <div className="truncate text-xs text-texto-suave">{m.usuario}</div>
               <span className={`pilula ${m.papel === "dono" ? "text-ouro" : "text-texto-suave"}`}>
                 {m.papel === "dono" ? "Dono" : "Barbeiro"}
               </span>
@@ -52,6 +53,7 @@ export default function Equipe() {
           + Cadastrar barbeiro
         </Botao>
         <Notificacoes />
+        {eu.papel === "dono" ? <ZerarSistema /> : null}
         <Link to="/painel/clientes" className="rounded-xl bg-superficie-alta py-3 text-center text-[15px] font-semibold text-ouro">
           Clientes e privacidade ›
         </Link>
@@ -65,18 +67,18 @@ export default function Equipe() {
 
 function NovoMembro({ aoFechar, aoSalvo }: { aoFechar: () => void; aoSalvo: () => void }) {
   const [nome, setNome] = useState("");
-  const [usuario, setUsuario] = useState("");
+  const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
   async function salvar() {
-    if (!nome.trim() || !usuario.trim()) return setErro("Informe o nome e o usuário.");
+    if (!nome.trim() || !email.trim()) return setErro("Informe o nome e o e-mail.");
     if (senha.length < 8) return setErro("A senha provisória precisa ter pelo menos 8 caracteres.");
     setEnviando(true);
     setErro(null);
     try {
-      await api("/api/equipe", { corpo: { nome: nome.trim(), usuario: usuario.trim(), senha } });
+      await api("/api/equipe", { corpo: { nome: nome.trim(), email: email.trim(), senha } });
       aoSalvo();
     } catch (e) {
       setErro(mensagemDe(e));
@@ -96,17 +98,19 @@ function NovoMembro({ aoFechar, aoSalvo }: { aoFechar: () => void; aoSalvo: () =
           <input id="n-nome" className="campo" maxLength={60} value={nome} onChange={(e) => setNome(e.target.value)} />
         </div>
         <div>
-          <label className="rotulo block" htmlFor="n-usuario">
-            Usuário (para entrar)
+          <label className="rotulo block" htmlFor="n-email">
+            E-mail (para entrar)
           </label>
           <input
-            id="n-usuario"
+            id="n-email"
             className="campo"
+            type="email"
+            inputMode="email"
             autoCapitalize="none"
             autoCorrect="off"
-            maxLength={40}
-            value={usuario}
-            onChange={(e) => setUsuario(e.target.value)}
+            maxLength={254}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
         </div>
         <div>
@@ -164,7 +168,7 @@ function EditarMembro({
     <Folha aberta aoFechar={aoFechar} rotulo="Editar membro da equipe">
       <div className="flex flex-col gap-4">
         <h2 className="bebas text-[28px] leading-none">Editar {membro.nome}</h2>
-        <p className="text-sm text-texto-suave">Usuário: {membro.usuario}</p>
+        <p className="text-sm text-texto-suave">E-mail: {membro.usuario}</p>
         <div>
           <label className="rotulo block" htmlFor="e-nome">
             Nome
@@ -188,5 +192,64 @@ function EditarMembro({
         )}
       </div>
     </Folha>
+  );
+}
+
+/** Zona de perigo (só o dono): apaga contas e dados de clientes para entregar o sistema limpo. */
+function ZerarSistema() {
+  const navegar = useNavigate();
+  const [senha, setSenha] = useState("");
+  const [confirmacao, setConfirmacao] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+
+  async function zerar(e: FormEvent) {
+    e.preventDefault();
+    setEnviando(true);
+    setErro(null);
+    try {
+      await api("/api/sistema/zerar", { corpo: { senha, confirmacao: confirmacao.trim() } });
+      navegar("/painel/cadastro", { replace: true });
+    } catch (e) {
+      setErro(mensagemDe(e));
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <form onSubmit={zerar} className="cartao flex flex-col gap-3 border border-erro/60 p-3.5" aria-labelledby="zerar-titulo">
+      <h2 id="zerar-titulo" className="text-base font-semibold text-erro">
+        Zerar sistema e entregar para o dono
+      </h2>
+      <p className="text-sm text-texto-suave">
+        Apaga todas as contas (inclusive a sua), clientes, agendamentos, bloqueios e as inscrições de notificação. Mantém os
+        serviços, os preços e as configurações. Depois disso, a tela de entrada volta a mostrar &quot;Cadastre-se&quot; para
+        o dono criar a conta dele. Não dá para desfazer.
+      </p>
+      <div>
+        <label className="rotulo block" htmlFor="z-senha">
+          Sua senha atual
+        </label>
+        <input id="z-senha" className="campo" type="password" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} />
+      </div>
+      <div>
+        <label className="rotulo block" htmlFor="z-confirmacao">
+          Digite ZERAR para confirmar
+        </label>
+        <input
+          id="z-confirmacao"
+          className="campo"
+          autoComplete="off"
+          autoCapitalize="characters"
+          autoCorrect="off"
+          value={confirmacao}
+          onChange={(e) => setConfirmacao(e.target.value)}
+        />
+      </div>
+      {erro ? <Aviso>{erro}</Aviso> : null}
+      <Botao type="submit" variante="secundario" className="!text-erro" disabled={enviando || !senha || confirmacao.trim() !== "ZERAR"}>
+        {enviando ? "Zerando…" : "Zerar sistema"}
+      </Botao>
+    </form>
   );
 }

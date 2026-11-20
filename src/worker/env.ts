@@ -10,7 +10,6 @@ export type Env = {
   VAPID_PUBLIC_KEY: string;
   VAPID_PRIVATE_KEY: string;
   VAPID_SUBJECT: string;
-  CODIGO_INSTALACAO?: string;
   // Só para testes ponta a ponta sem internet: troca o endereço de verificação do Turnstile.
   TURNSTILE_VERIFY_URL?: string;
 };

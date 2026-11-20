@@ -12,10 +12,10 @@ let hashPadrao: Promise<string> | null = null;
 /** Cria um usuário direto no banco e já abre uma sessão para ele. */
 export async function criarUsuario(
   papel: Papel,
-  opcoes: { usuario?: string; ativo?: boolean } = {},
+  opcoes: { usuario?: string; ativo?: boolean } /* `usuario` é o e-mail */ = {},
 ): Promise<{ id: string; usuario: string; senha: string; token: string }> {
   const id = crypto.randomUUID();
-  const usuario = opcoes.usuario ?? `u-${id.slice(0, 8)}`;
+  const usuario = opcoes.usuario ?? `u-${id.slice(0, 8)}@exemplo.com`;
   hashPadrao ??= gerarHashSenha(SENHA_PADRAO);
   await env.DB.prepare(
     "INSERT INTO usuarios (id, nome, usuario, senha_hash, papel, ativo, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?)",

@@ -1,7 +1,7 @@
 // Gera o hash de uma senha para colar no banco (console D1 do Cloudflare) quando o dono
 // esquece a senha. Mesmo algoritmo de src/worker/seguranca/senha.ts: PBKDF2-SHA256,
 // 100000 iterações, sal de 16 bytes. Uso:  node scripts/hash-senha.mjs 'nova-senha'
-// Se mudar um dos dois arquivos, mude o outro (test/primeiro-acesso.test.ts confere os dois).
+// Se mudar um dos dois arquivos, mude o outro (test/hash-senha.test.ts confere os dois).
 const ITERACOES = 100_000;
 
 const paraBase64 = (bytes) => btoa(String.fromCharCode(...bytes));

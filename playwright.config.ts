@@ -4,14 +4,13 @@ import { defineConfig, devices } from "@playwright/test";
 // E2E no celular (iPhone 13 emulado, em Chromium) contra o Worker de verdade (`npm run dev`,
 // plugin do Cloudflare para o Vite), com banco D1 local zerado a cada execução.
 //
-// As chaves de teste do Turnstile e o código de instalação vão para o `.dev.vars` (ignorado pelo
+// As chaves de teste do Turnstile vão para o `.dev.vars` (ignorado pelo
 // git), gerado aqui. Um `.dev.vars` que não foi gerado por este arquivo nunca é sobrescrito.
 const MARCA = "# gerado por playwright.config.ts (e2e)";
 const VARS = [
   MARCA,
   "TURNSTILE_SITE_KEY=1x00000000000000000000AA",
   "TURNSTILE_SECRET=1x0000000000000000000000000000000AA",
-  "CODIGO_INSTALACAO=codigo-de-instalacao-do-e2e",
   // Por padrão o e2e não depende da internet: a verificação do token vai para um verificador
   // local (e2e/verificador-turnstile.mjs). Com E2E_TURNSTILE_REAL=1 usa a Cloudflare de verdade.
   ...(process.env.E2E_TURNSTILE_REAL ? [] : ["TURNSTILE_VERIFY_URL=http://127.0.0.1:8788/siteverify"]),

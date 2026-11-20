@@ -25,7 +25,7 @@ describe("cabeçalhos de segurança", () => {
 });
 
 describe("CSRF por Origin", () => {
-  const corpo = JSON.stringify({ usuario: "x", senha: "y" });
+  const corpo = JSON.stringify({ email: "x@exemplo.com", senha: "y" });
   const post = (origem?: string) =>
     SELF.fetch("https://exemplo.com/api/auth/entrar", {
       method: "POST",

@@ -72,11 +72,6 @@ o valor nunca mais aparece).
 | `TURNSTILE_SECRET` | **Secret** | Secret Key do passo 3 |
 | `VAPID_PUBLIC_KEY` | Texto (Variable) | Public Key do passo 4 |
 | `VAPID_PRIVATE_KEY` | **Secret** | Private Key do passo 4 |
-| `CODIGO_INSTALACAO` | **Secret** | Uma frase longa inventada por você (veja abaixo) |
-
-O `CODIGO_INSTALACAO` é a "chave da porta" do primeiro acesso: só quem souber esse código consegue
-criar a conta de dono. Invente algo longo e difícil, como quatro palavras sem relação entre si
-(com no mínimo 20 caracteres). Anote.
 
 Depois de salvar, clique em **Deploy** (ou **Save and deploy**) se o painel pedir.
 
@@ -88,19 +83,16 @@ Importante: o projeto está configurado com `keep_vars` ligado, o que faz o Clou
 variáveis cadastradas no painel a cada novo deploy. Por isso as chaves ficam só no painel e não
 no código.
 
-## 6. Criar a conta do dono (primeiro acesso)
+## 6. Criar a conta do dono
 
-1. Abra `https://SEU-SITE/painel/primeiro-acesso` (troque `SEU-SITE` pelo endereço do passo 2).
-   (Se você abrir `/painel/entrar` antes de existir uma conta, aparece o link
-   **Primeiro acesso? Criar conta do dono**.)
-2. Preencha **Código de instalação** (o do passo 5), **Seu nome**, o nome de usuário (letras,
-   números, ponto, hífen ou sublinhado; de 3 a 30 caracteres) e uma senha de pelo menos 8 caracteres.
-3. Toque em **Criar conta**. Você já entra no painel.
+1. Abra `https://SEU-SITE/painel` (troque `SEU-SITE` pelo endereço do passo 2) e toque em
+   **Cadastre-se** (o link só aparece enquanto não existe nenhuma conta).
+2. Preencha **Nome**, **E-mail** e uma **Senha** de pelo menos 8 caracteres.
+3. Toque em **Criar conta**. Você já entra no painel como dono.
 
-Essa tela funciona **uma única vez**: depois que existe uma conta, ela deixa de existir.
-Se aparecer "não encontrado", confira se o `CODIGO_INSTALACAO` foi salvo e se o deploy terminou.
-
-Dica de segurança: depois de criar o dono, você pode apagar o secret `CODIGO_INSTALACAO` do painel.
+O cadastro funciona **uma única vez**: depois que existe uma conta, o link **Cadastre-se** some e
+o endereço `/painel/cadastro` mostra "Cadastro fechado". Atenção: enquanto ninguém criou a conta,
+qualquer pessoa que souber o endereço consegue cadastrar o dono, então crie a conta logo depois do deploy.
 
 ## 7. Configurar a barbearia
 
@@ -110,8 +102,8 @@ Já dentro do painel:
    preços e as durações, e crie outros se quiser.
 2. **Horários** (tela *Horários e folgas*): o padrão é segunda a sábado, das 9h às 19h, com almoço das 12h às 13h. Ajuste
    conforme a sua rotina.
-3. **Equipe**: crie a conta do seu filho (e de outros barbeiros). Cada um tem o próprio usuário
-   e a própria agenda. Passe a senha pessoalmente; peça para guardar.
+3. **Equipe**: crie a conta do seu filho (e de outros barbeiros). Cada um entra com o próprio e-mail
+   e tem a própria agenda. Passe a senha pessoalmente; peça para guardar.
 
 ## 8. Instalar o app no celular
 
@@ -138,7 +130,25 @@ O site funciona como um aplicativo. Faça isso no celular de quem usa o painel.
 
 Cada pessoa ativa nas próprias contas e celulares. Se um celular for trocado, ative de novo.
 
-## 10. Se esquecer a senha do dono
+## 10. Testar antes de entregar
+
+Antes de entregar o sistema para o dono de verdade, use-o à vontade com a sua conta: crie
+serviços, faça agendamentos de teste, cadastre barbeiros, ative as notificações. Quando estiver
+tudo certo, deixe o sistema limpo:
+
+1. Entre no painel com a sua conta de dono e abra a aba **Equipe**.
+2. Role até o cartão **Zerar sistema e entregar para o dono** (borda vermelha).
+3. Digite a sua senha atual e a palavra `ZERAR`, e toque em **Zerar sistema**.
+
+O que acontece: todas as contas (inclusive a sua), clientes, agendamentos, bloqueios de horário e
+inscrições de notificação são apagados. Os **serviços, os preços e as configurações ficam**. Você
+sai do painel e a tela de entrada volta a mostrar **Não tem conta? Cadastre-se**: o dono verdadeiro
+abre o endereço do painel e cria a conta dele (passo 6). Depois, ele cadastra a equipe em **Equipe**.
+
+Não dá para desfazer (só pelo Time Travel, no passo 12). Quem for instalar o app no celular e ativar
+as notificações (passos 8 e 9) deve fazer isso depois da entrega, já com a conta do dono.
+
+## 11. Se esquecer a senha do dono
 
 O sistema não tem "esqueci minha senha" para o dono. Para redefinir, pelo painel do Cloudflare:
 
@@ -146,21 +156,21 @@ O sistema não tem "esqueci minha senha" para o dono. Para redefinir, pelo paine
    `node scripts/hash-senha.mjs 'NOVA-SENHA-AQUI'`
    Vai imprimir uma linha começando com `pbkdf2$100000$...`. Copie essa linha inteira.
 2. No painel: **Storage & Databases -> D1 SQL Database -> padilhas -> Console**.
-3. Rode (troque o hash e o nome de usuário pelos seus):
-   `UPDATE usuarios SET senha_hash = 'COLE-O-HASH-AQUI' WHERE usuario = 'seu-usuario';`
+3. Rode (troque o hash e o e-mail pelos seus):
+   `UPDATE usuarios SET senha_hash = 'COLE-O-HASH-AQUI' WHERE usuario = 'seu-email@exemplo.com';`
 4. Em seguida, para derrubar logins antigos: `DELETE FROM sessoes;`
 5. Entre com a nova senha.
 
 Para a conta de um barbeiro, o dono troca a senha direto na tela de Equipe.
 
-## 11. Backups
+## 12. Backups
 
 O banco D1 tem o **Time Travel**, já ligado: o Cloudflare guarda o histórico dos últimos 30 dias e
 permite voltar o banco a qualquer minuto desse período. Se algo for apagado por engano, no painel
 abra o banco `padilhas` e procure por **Time Travel** (ou peça ajuda a quem mantém o sistema com o
 comando `npx wrangler d1 time-travel restore padilhas --timestamp=...`).
 
-## 12. Domínio próprio (opcional)
+## 13. Domínio próprio (opcional)
 
 Se você tem um domínio (por exemplo `agenda.suabarbearia.com.br`) no Cloudflare:
 **Workers & Pages -> barbearia -> Settings -> Domains & Routes -> Add -> Custom domain**.

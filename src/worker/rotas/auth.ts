@@ -4,6 +4,7 @@ import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import type { Usuario } from "../../shared/tipos";
 import type { AppEnv } from "../env";
+import { emailSchema } from "../seguranca/email";
 import { consumirLimite } from "../seguranca/limite";
 import { exigirLogin } from "../seguranca/middleware";
 import { conferirSenha } from "../seguranca/senha";
@@ -11,13 +12,13 @@ import { NOME_COOKIE, apagarSessao, criarSessao, definirCookieSessao, opcoesCook
 
 export const auth = new Hono<AppEnv>();
 
-const MSG_CREDENCIAIS = "Usuário ou senha incorretos.";
+const MSG_CREDENCIAIS = "E-mail ou senha incorretos.";
 const MSG_BLOQUEADO = "Muitas tentativas. Tente de novo em 15 minutos.";
 const MAX_FALHAS = 5;
 const BLOQUEIO_MS = 15 * 60 * 1000;
 
 const corpoEntrar = z.object({
-  usuario: z.string().trim().min(1).max(64),
+  email: emailSchema,
   senha: z.string().min(1).max(200),
 });
 
@@ -37,8 +38,8 @@ auth.post("/entrar", limiteCorpo, async (c) => {
   const ip = c.req.header("CF-Connecting-IP") ?? "desconhecido";
   if (!(await consumirLimite(c.env.DB, `entrar:${ip}`, 20, 15 * 60))) return c.json({ erro: MSG_BLOQUEADO }, 429);
   const analise = corpoEntrar.safeParse(await c.req.json().catch(() => null));
-  if (!analise.success) return c.json({ erro: "Informe usuário e senha." }, 400);
-  const { usuario, senha } = analise.data;
+  if (!analise.success) return c.json({ erro: "Informe e-mail e senha." }, 400);
+  const { email: usuario, senha } = analise.data; // a coluna `usuarios.usuario` guarda o e-mail
   const db = c.env.DB;
   const agora = new Date();
 

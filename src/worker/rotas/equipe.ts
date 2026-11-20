@@ -7,6 +7,7 @@ import type { Usuario } from "../../shared/tipos";
 import type { AppEnv } from "../env";
 import { comandosExpedientePadrao } from "../db/expediente-padrao";
 import { exigirDono, exigirLogin } from "../seguranca/middleware";
+import { emailSchema } from "../seguranca/email";
 import { gerarHashSenha } from "../seguranca/senha";
 
 export const equipe = new Hono<AppEnv>();
@@ -21,7 +22,7 @@ const COLUNAS = "id, nome, usuario, papel, ativo, criado_em";
 const senha = z.string().min(8).max(200);
 const novo = z.object({
   nome: z.string().trim().min(1).max(60),
-  usuario: z.string().regex(/^[a-z0-9._-]{3,30}$/i),
+  email: emailSchema,
   senha,
 });
 const edicao = z.object({
@@ -40,9 +41,9 @@ equipe.post("/", limiteCorpo, async (c) => {
   if (!analise.success) return c.json({ erro: "Dados inválidos." }, 400);
   const d = analise.data;
   const db = c.env.DB;
-  // A coluna é NOCASE: "Ana" e "ana" são o mesmo usuário.
-  if (await db.prepare("SELECT 1 FROM usuarios WHERE usuario = ?").bind(d.usuario).first())
-    return c.json({ erro: "Esse usuário já existe." }, 409);
+  // O e-mail fica na coluna `usuario` (NOCASE): "Ana@x.com" e "ana@x.com" são o mesmo.
+  if (await db.prepare("SELECT 1 FROM usuarios WHERE usuario = ?").bind(d.email).first())
+    return c.json({ erro: "Esse e-mail já está cadastrado." }, 409);
   const id = crypto.randomUUID();
   const hash = await gerarHashSenha(d.senha);
   try {
@@ -52,12 +53,12 @@ equipe.post("/", limiteCorpo, async (c) => {
         .prepare(
           "INSERT INTO usuarios (id, nome, usuario, senha_hash, papel, ativo, criado_em) VALUES (?, ?, ?, ?, 'barbeiro', 1, ?)",
         )
-        .bind(id, d.nome, d.usuario, hash, new Date().toISOString()),
+        .bind(id, d.nome, d.email, hash, new Date().toISOString()),
       ...comandosExpedientePadrao(db, id),
     ]);
   } catch (erro) {
-    // Cadastro simultâneo do mesmo usuário: a restrição UNIQUE do banco decide.
-    if (String(erro).includes("UNIQUE")) return c.json({ erro: "Esse usuário já existe." }, 409);
+    // Cadastro simultâneo do mesmo e-mail: a restrição UNIQUE do banco decide.
+    if (String(erro).includes("UNIQUE")) return c.json({ erro: "Esse e-mail já está cadastrado." }, 409);
     throw erro;
   }
   const criado = await db.prepare(`SELECT ${COLUNAS} FROM usuarios WHERE id = ?`).bind(id).first<Usuario>();

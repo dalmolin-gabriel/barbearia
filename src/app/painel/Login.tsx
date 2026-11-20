@@ -7,16 +7,16 @@ import { Logo } from "../componentes/Logo";
 
 export default function Login() {
   const navegar = useNavigate();
-  const [usuario, setUsuario] = useState("");
+  const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
-  const [primeiroAcesso, setPrimeiroAcesso] = useState(false);
+  const [cadastroAberto, setCadastroAberto] = useState(false);
 
   useEffect(() => {
     let vivo = true;
-    api<{ disponivel: boolean }>("/api/primeiro-acesso")
-      .then((r) => vivo && setPrimeiroAcesso(r.disponivel))
+    api<{ disponivel: boolean }>("/api/cadastro")
+      .then((r) => vivo && setCadastroAberto(r.disponivel))
       .catch(() => undefined);
     return () => {
       vivo = false;
@@ -28,7 +28,7 @@ export default function Login() {
     setEnviando(true);
     setErro(null);
     try {
-      await api("/api/auth/entrar", { corpo: { usuario: usuario.trim(), senha } });
+      await api("/api/auth/entrar", { corpo: { email: email.trim(), senha } });
       navegar("/painel", { replace: true });
     } catch (e) {
       setErro(mensagemDe(e));
@@ -42,20 +42,22 @@ export default function Login() {
       <div className="flex flex-col items-center gap-2.5">
         <Logo tamanho={150} className="shadow-[0_0_40px_rgba(208,184,72,0.25)]" />
         <h1 className="bebas mt-2 text-[34px] leading-none">Painel da barbearia</h1>
-        <p className="text-[15px] text-texto-suave">Entre com o seu usuário e a sua senha.</p>
+        <p className="text-[15px] text-texto-suave">Entre com o seu e-mail e a sua senha.</p>
       </div>
       <div>
-        <label htmlFor="usuario" className="rotulo block">
-          Usuário
+        <label htmlFor="email" className="rotulo block">
+          E-mail
         </label>
         <input
-          id="usuario"
+          id="email"
           className="campo"
+          type="email"
+          inputMode="email"
           autoComplete="username"
           autoCapitalize="none"
           autoCorrect="off"
-          value={usuario}
-          onChange={(e) => setUsuario(e.target.value)}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
         />
       </div>
       <div>
@@ -72,12 +74,12 @@ export default function Login() {
         />
       </div>
       {erro ? <Aviso>{erro}</Aviso> : null}
-      <Botao type="submit" disabled={enviando || !usuario.trim() || !senha}>
+      <Botao type="submit" disabled={enviando || !email.trim() || !senha}>
         {enviando ? "Entrando…" : "Entrar"}
       </Botao>
-      {primeiroAcesso ? (
-        <Link to="/painel/primeiro-acesso" className="text-center text-[15px] font-semibold text-ouro">
-          Primeiro acesso? Criar conta do dono
+      {cadastroAberto ? (
+        <Link to="/painel/cadastro" className="text-center text-[15px] font-semibold text-ouro">
+          Não tem conta? Cadastre-se
         </Link>
       ) : null}
     </form>

@@ -2,8 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 test.describe.configure({ mode: "serial" });
 
-const CODIGO = "codigo-de-instalacao-do-e2e";
-const USUARIO = "padilha";
+const EMAIL = "padilha@exemplo.com";
 const SENHA = "senha-de-teste-123";
 
 // O script do Turnstile vem de challenges.cloudflare.com, que pode estar bloqueado na rede de
@@ -23,35 +22,37 @@ async function stubTurnstile(page: Page) {
 
 let diaMarcado = "";
 
-test("primeiro acesso cria o dono com o código de instalação", async ({ page }) => {
+test("cadastro aberto cria o dono e depois fecha", async ({ page }) => {
   await page.goto("/painel/entrar");
-  await page.getByRole("link", { name: /Primeiro acesso\? Criar conta do dono/ }).click();
-  await expect(page).toHaveURL(/\/painel\/primeiro-acesso/);
+  await page.getByRole("link", { name: "Não tem conta? Cadastre-se" }).click();
+  await expect(page).toHaveURL(/\/painel\/cadastro/);
+  await expect(page.getByRole("heading", { name: "Criar conta" })).toBeVisible();
 
-  await page.getByLabel("Código de instalação").fill("codigo-errado-123");
-  await page.getByLabel("Seu nome").fill("Padilha");
-  await page.getByLabel("Usuário").fill(USUARIO);
+  await page.getByLabel("Nome").fill("Padilha");
+  await page.getByLabel("E-mail").fill("isso-nao-e-email");
   await page.getByLabel(/^Senha/).fill(SENHA);
   await page.getByRole("button", { name: "mostrar" }).click();
   await expect(page.getByLabel(/^Senha/)).toHaveAttribute("type", "text");
+  // E-mail inválido: o navegador barra o envio e nada é criado.
   await page.getByRole("button", { name: "Criar conta" }).click();
-  await expect(page.getByRole("alert")).toContainText("Código de instalação incorreto.");
+  await expect(page).toHaveURL(/\/painel\/cadastro/);
 
-  await page.getByLabel("Código de instalação").fill(CODIGO);
+  await page.getByLabel("E-mail").fill(EMAIL);
   await page.getByRole("button", { name: "Criar conta" }).click();
   await expect(page).toHaveURL(/\/painel$/);
   await expect(page.getByRole("navigation", { name: "Menu do painel" })).toBeVisible();
 
-  // Depois de criada, a tela deixa de oferecer o cadastro.
+  // Depois de criada, o cadastro fecha e o endereço antigo redireciona.
   await page.goto("/painel/primeiro-acesso");
-  await expect(page.getByText("O sistema já foi configurado.")).toBeVisible();
+  await expect(page).toHaveURL(/\/painel\/cadastro/);
+  await expect(page.getByText("Cadastro fechado. Peça ao dono para criar sua conta.")).toBeVisible();
 });
 
 test("cliente agenda um Corte e vê a tela Pronto", async ({ page }) => {
   await stubTurnstile(page);
   await page.goto("/");
 
-  // 1. Serviço (os de exemplo vêm do primeiro acesso)
+  // 1. Serviço (os de exemplo vêm do cadastro)
   await page.locator("[role=checkbox]", { has: page.getByText("Corte", { exact: true }) }).click();
   await page.getByRole("button", { name: "Continuar" }).click();
 
@@ -84,7 +85,8 @@ test("cliente agenda um Corte e vê a tela Pronto", async ({ page }) => {
 
 test("dono vê o agendamento em Hoje e marca Chegou", async ({ page }) => {
   await page.goto("/painel/entrar");
-  await page.getByLabel("Usuário").fill(USUARIO);
+  await expect(page.getByRole("link", { name: "Não tem conta? Cadastre-se" })).toHaveCount(0);
+  await page.getByLabel("E-mail").fill(EMAIL);
   await page.getByLabel("Senha").fill(SENHA);
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page).toHaveURL(/\/painel$/);
@@ -101,4 +103,33 @@ test("dono vê o agendamento em Hoje e marca Chegou", async ({ page }) => {
   await page.getByRole("button", { name: "✓ Chegou" }).click();
   await expect(page.getByText("✓ JÁ ATENDIDOS")).toBeVisible();
   await expect(page.getByText("João Teste")).toBeVisible();
+});
+
+test("dono zera o sistema e o Cadastre-se volta", async ({ page }) => {
+  await page.goto("/painel/entrar");
+  await page.getByLabel("E-mail").fill(EMAIL);
+  await page.getByLabel("Senha").fill(SENHA);
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page).toHaveURL(/\/painel$/);
+
+  await page.getByRole("navigation", { name: "Menu do painel" }).getByRole("link", { name: /Equipe/ }).click();
+  await expect(page.getByText(EMAIL)).toBeVisible();
+  const zerar = page.getByRole("button", { name: "Zerar sistema" });
+  await expect(page.getByText("Zerar sistema e entregar para o dono")).toBeVisible();
+  await expect(zerar).toBeDisabled();
+
+  // Senha errada: o servidor recusa e nada some.
+  await page.getByLabel("Sua senha atual").fill("senha-errada-123");
+  await page.getByLabel("Digite ZERAR para confirmar").fill("ZERAR");
+  await zerar.click();
+  await expect(page.getByRole("alert")).toContainText("Senha incorreta.");
+  await expect(page).toHaveURL(/\/painel\/equipe/);
+
+  await page.getByLabel("Sua senha atual").fill(SENHA);
+  await zerar.click();
+  await expect(page).toHaveURL(/\/painel\/cadastro/);
+  await expect(page.getByRole("heading", { name: "Criar conta" })).toBeVisible();
+
+  await page.goto("/painel/entrar");
+  await expect(page.getByRole("link", { name: "Não tem conta? Cadastre-se" })).toBeVisible();
 });

@@ -80,7 +80,7 @@ describe("rotas do dono", () => {
       ["POST", "/api/servicos", { nome: "X", duracao_min: 30, preco_centavos: 1000 }],
       ["PUT", `/api/servicos/${corte}`, { nome: "X", duracao_min: 30, preco_centavos: 1000, ativo: true }],
       ["PUT", `/api/expediente/${b1.id}`, { dias: sete() }],
-      ["POST", "/api/equipe", { nome: "Novo", usuario: "novo", senha: "12345678" }],
+      ["POST", "/api/equipe", { nome: "Novo", email: "novo@exemplo.com", senha: "12345678" }],
       ["PUT", `/api/equipe/${b2.id}`, { ativo: false }],
       ["DELETE", `/api/clientes/${crypto.randomUUID()}`, undefined],
     ];
@@ -176,7 +176,7 @@ describe("rotas do dono", () => {
       const r = await req("/api/equipe", {
         metodo: "POST",
         token: dono.token,
-        corpo: { nome: "Novo Barbeiro", usuario: "novo.barbeiro", senha: "12345678" },
+        corpo: { nome: "Novo Barbeiro", email: "novo.barbeiro@exemplo.com", senha: "12345678" },
       });
       expect(r.status).toBe(201);
       const j = (await r.json()) as any;
@@ -191,7 +191,7 @@ describe("rotas do dono", () => {
       expect(results[6].aberto).toBe(1);
       const login = await req("/api/auth/entrar", {
         metodo: "POST",
-        corpo: { usuario: "novo.barbeiro", senha: "12345678" },
+        corpo: { email: "novo.barbeiro@exemplo.com", senha: "12345678" },
         ip: novoIp(),
       });
       expect(login.status).toBe(200);
@@ -200,12 +200,12 @@ describe("rotas do dono", () => {
       expect(JSON.stringify(lista)).not.toContain("senha_hash");
     });
 
-    it("usuário repetido dá 409; usuário e senha inválidos dão 400", async () => {
-      const corpo = { nome: "A", usuario: "repetido", senha: "12345678" };
+    it("e-mail repetido dá 409; e-mail e senha inválidos dão 400", async () => {
+      const corpo = { nome: "A", email: "repetido@exemplo.com", senha: "12345678" };
       expect((await req("/api/equipe", { metodo: "POST", token: dono.token, corpo })).status).toBe(201);
-      expect((await req("/api/equipe", { metodo: "POST", token: dono.token, corpo: { ...corpo, usuario: "REPETIDO" } })).status).toBe(409);
-      for (const ruim of [{ usuario: "ab" }, { usuario: "com espaço" }, { senha: "1234567" }, { nome: "" }])
-        expect((await req("/api/equipe", { metodo: "POST", token: dono.token, corpo: { ...corpo, usuario: "outro", ...ruim } })).status).toBe(400);
+      expect((await req("/api/equipe", { metodo: "POST", token: dono.token, corpo: { ...corpo, email: "REPETIDO@Exemplo.com" } })).status).toBe(409);
+      for (const ruim of [{ email: "ab" }, { email: "com espaço@x.com" }, { senha: "1234567" }, { nome: "" }])
+        expect((await req("/api/equipe", { metodo: "POST", token: dono.token, corpo: { ...corpo, email: "outro@exemplo.com", ...ruim } })).status).toBe(400);
     });
 
     it("desativar derruba a sessão, some da info pública e continua no resumo", async () => {

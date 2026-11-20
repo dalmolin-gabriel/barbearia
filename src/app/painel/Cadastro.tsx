@@ -6,14 +6,13 @@ import { Botao } from "../componentes/Botao";
 import { Carregando } from "../componentes/Carregando";
 import { Logo } from "../componentes/Logo";
 
-/** Primeiro acesso: cria a conta do dono, uma única vez, com o código de instalação. */
-export default function PrimeiroAcesso() {
+/** Cadastro: cria a primeira conta (o dono). Só fica aberto enquanto não existe nenhuma conta. */
+export default function Cadastro() {
   const navegar = useNavigate();
   const [disponivel, setDisponivel] = useState<boolean | null>(null);
   const [falha, setFalha] = useState<string | null>(null);
-  const [codigo, setCodigo] = useState("");
   const [nome, setNome] = useState("");
-  const [usuario, setUsuario] = useState("");
+  const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [mostrar, setMostrar] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -21,7 +20,7 @@ export default function PrimeiroAcesso() {
 
   useEffect(() => {
     let vivo = true;
-    api<{ disponivel: boolean }>("/api/primeiro-acesso")
+    api<{ disponivel: boolean }>("/api/cadastro")
       .then((r) => vivo && setDisponivel(r.disponivel))
       .catch((e) => vivo && setFalha(mensagemDe(e)));
     return () => {
@@ -35,9 +34,7 @@ export default function PrimeiroAcesso() {
     setEnviando(true);
     setErro(null);
     try {
-      await api("/api/primeiro-acesso", {
-        corpo: { codigo: codigo.trim(), nome: nome.trim(), usuario: usuario.trim(), senha },
-      });
+      await api("/api/cadastro", { corpo: { nome: nome.trim(), email: email.trim(), senha } });
       navegar("/painel", { replace: true });
     } catch (e) {
       setErro(mensagemDe(e));
@@ -49,7 +46,7 @@ export default function PrimeiroAcesso() {
   const cabecalho = (
     <div className="flex flex-col items-center gap-2.5">
       <Logo tamanho={150} className="shadow-[0_0_40px_rgba(208,184,72,0.25)]" />
-      <h1 className="bebas mt-2 text-[34px] leading-none">Primeiro acesso</h1>
+      <h1 className="bebas mt-2 text-[34px] leading-none">Criar conta</h1>
     </div>
   );
 
@@ -67,7 +64,7 @@ export default function PrimeiroAcesso() {
     return (
       <div className="mx-auto flex max-w-[480px] flex-col gap-4 px-6 pb-10 pt-10">
         {cabecalho}
-        <Aviso tipo="info">O sistema já foi configurado.</Aviso>
+        <Aviso tipo="info">Cadastro fechado. Peça ao dono para criar sua conta.</Aviso>
         <Link to="/painel/entrar" className="rounded-xl bg-superficie-alta py-3 text-center text-[15px] font-semibold text-ouro">
           Ir para a entrada do painel ›
         </Link>
@@ -78,44 +75,28 @@ export default function PrimeiroAcesso() {
   return (
     <form onSubmit={criar} className="mx-auto flex max-w-[480px] flex-col gap-4 px-6 pb-10 pt-10">
       {cabecalho}
-      <p className="text-center text-[15px] text-texto-suave">
-        Crie a conta do dono. Você precisa do código de instalação, o mesmo que foi cadastrado no Cloudflare.
-      </p>
-      <div>
-        <label htmlFor="codigo" className="rotulo block">
-          Código de instalação
-        </label>
-        <input
-          id="codigo"
-          className="campo"
-          autoComplete="off"
-          autoCapitalize="none"
-          autoCorrect="off"
-          value={codigo}
-          onChange={(e) => setCodigo(e.target.value)}
-        />
-      </div>
       <div>
         <label htmlFor="nome" className="rotulo block">
-          Seu nome
+          Nome
         </label>
         <input id="nome" className="campo" autoComplete="name" maxLength={60} value={nome} onChange={(e) => setNome(e.target.value)} />
       </div>
       <div>
-        <label htmlFor="usuario" className="rotulo block">
-          Usuário
+        <label htmlFor="email" className="rotulo block">
+          E-mail
         </label>
         <input
-          id="usuario"
+          id="email"
           className="campo"
-          autoComplete="username"
+          type="email"
+          inputMode="email"
+          autoComplete="email"
           autoCapitalize="none"
           autoCorrect="off"
-          maxLength={30}
-          value={usuario}
-          onChange={(e) => setUsuario(e.target.value)}
+          maxLength={254}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
         />
-        <p className="mt-1 text-xs text-texto-suave">De 3 a 30 letras, números, ponto, hífen ou sublinhado.</p>
       </div>
       <div>
         <label htmlFor="senha" className="rotulo block">
@@ -142,9 +123,12 @@ export default function PrimeiroAcesso() {
         </div>
       </div>
       {erro ? <Aviso>{erro}</Aviso> : null}
-      <Botao type="submit" disabled={enviando || !codigo.trim() || !nome.trim() || !usuario.trim() || !senha}>
+      <Botao type="submit" disabled={enviando || !nome.trim() || !email.trim() || !senha}>
         {enviando ? "Criando…" : "Criar conta"}
       </Botao>
+      <Link to="/painel/entrar" className="text-center text-[15px] font-semibold text-ouro">
+        Já tem conta? Entrar
+      </Link>
     </form>
   );
 }
