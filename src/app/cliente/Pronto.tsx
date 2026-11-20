@@ -103,7 +103,8 @@ export default function Pronto() {
       </div>
       <h1 className="bebas text-[38px] leading-none">Pronto, tá marcado!</h1>
       <p className="text-center text-base text-texto-suave">
-        Te esperamos na {diaExtenso(dataDe(r.inicio), true)} às {horaDe(r.inicio)}.
+        Te esperamos {/^(sábado|domingo)/.test(diaExtenso(dataDe(r.inicio), true)) ? "no" : "na"}{" "}
+        {diaExtenso(dataDe(r.inicio), true)} às {horaDe(r.inicio)}.
       </p>
       <Linhas
         className="cartao w-full p-4 text-sm"
