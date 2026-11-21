@@ -92,15 +92,16 @@ describe("banco de dados", () => {
     const cfg = Object.fromEntries(results.map((r) => [r.chave, r.valor]));
     expect(cfg.abertura_dia).toBe("6");
     expect(cfg.abertura_minuto).toBe("1380");
+    expect(cfg.semanas_abertas).toBe("1");
     expect(cfg.nome_barbearia).toBe("Barbearia dos Padilhas");
   });
 });
 
 describe("aplicarMigracoes", () => {
-  it("é idempotente e registra 2 linhas em _migracoes", async () => {
+  it("é idempotente e registra 3 linhas em _migracoes", async () => {
     await aplicarMigracoes(env.DB);
     await aplicarMigracoes(env.DB);
     const { results } = await env.DB.prepare("SELECT nome FROM _migracoes").all();
-    expect(results).toHaveLength(2);
+    expect(results).toHaveLength(3);
   });
 });

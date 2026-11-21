@@ -8,7 +8,7 @@ import { Pagina } from "../componentes/Pagina";
 import { useCarregar } from "../hooks";
 import { useSessao } from "../sessao";
 import { hhmm } from "../../shared/tempo";
-import { ddmm, dataDe, diaCurto, hojeLocal, horaDe, somarDias } from "../util";
+import { ddmm, dataDe, diaCurto, hojeLocal, horaDe, nomeDiaAbertura, somarDias } from "../util";
 import Bloquear from "./Bloquear";
 import { useBarbeiros } from "./MarcarCliente";
 import type { Bloq } from "./tipos";
@@ -64,6 +64,120 @@ function periodoBloqueio(b: Bloq): string {
   if (minutos >= 1440) return b.motivo || "Dia fechado";
   const quando = dataDe(b.fim) !== dataDe(b.inicio) ? `a partir das ${horaDe(b.inicio)}` : `${horaDe(b.inicio)} – ${horaDe(b.fim)}`;
   return b.motivo ? `${b.motivo} · ${quando}` : quando;
+}
+
+type ConfigAgenda = { aberturaDia: number; aberturaMinuto: number; semanas: 1 | 2 };
+const OPCOES_DIA = [1, 2, 3, 4, 5, 6] as const;
+const OPCOES_HORA = Array.from({ length: 48 }, (_, i) => i * 30);
+
+/** Só o dono: quando a próxima semana abre para os clientes e quantas semanas ficam abertas. */
+function AgendaClientes() {
+  const cfg = useCarregar(() => api<ConfigAgenda>("/api/config/agenda"), []);
+  const [form, setForm] = useState<ConfigAgenda | null>(null);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [pronto, setPronto] = useState(false);
+
+  useEffect(() => {
+    if (cfg.dados) setForm(cfg.dados);
+  }, [cfg.dados]);
+
+  async function salvar() {
+    if (!form) return;
+    setSalvando(true);
+    setErro(null);
+    setPronto(false);
+    try {
+      await api("/api/config/agenda", { metodo: "PUT", corpo: form });
+      setPronto(true);
+      await cfg.recarregar();
+    } catch (e) {
+      setErro(mensagemDe(e));
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  // Um horário vindo de fora da lista de 30 em 30 min continua aparecendo no select.
+  const horas = form && !OPCOES_HORA.includes(form.aberturaMinuto) ? [...OPCOES_HORA, form.aberturaMinuto].sort((a, b) => a - b) : OPCOES_HORA;
+  const mudar = (parte: Partial<ConfigAgenda>) => {
+    setPronto(false);
+    setForm((f) => (f ? { ...f, ...parte } : f));
+  };
+
+  return (
+    <div className="cartao flex flex-col gap-3 p-5">
+      <b className="text-base">Agenda dos clientes</b>
+      <p className="text-[13px] text-texto-suave">Os clientes marcam de segunda a sábado.</p>
+      {cfg.erro ? <Aviso>{cfg.erro}</Aviso> : null}
+      {form ? (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2 text-sm font-semibold">A próxima semana abre:</div>
+            <div>
+              <label className="mb-1 block text-xs text-texto-suave" htmlFor="abertura-dia">
+                Dia
+              </label>
+              <select
+                id="abertura-dia"
+                className="campo !p-2.5"
+                value={form.aberturaDia}
+                onChange={(e) => mudar({ aberturaDia: Number(e.target.value) })}
+              >
+                {OPCOES_DIA.map((d) => (
+                  <option key={d} value={d}>
+                    {nomeDiaAbertura(d)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-texto-suave" htmlFor="abertura-hora">
+                às
+              </label>
+              <select
+                id="abertura-hora"
+                className="campo !p-2.5"
+                value={form.aberturaMinuto}
+                onChange={(e) => mudar({ aberturaMinuto: Number(e.target.value) })}
+              >
+                {horas.map((m) => (
+                  <option key={m} value={m}>
+                    {hhmm(m)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-semibold" htmlFor="semanas-abertas">
+              Semanas abertas ao mesmo tempo:
+            </label>
+            <select
+              id="semanas-abertas"
+              className="campo !p-2.5"
+              value={form.semanas}
+              onChange={(e) => mudar({ semanas: Number(e.target.value) === 2 ? 2 : 1 })}
+            >
+              <option value={1}>1 semana (recomendado)</option>
+              <option value={2}>2 semanas</option>
+            </select>
+          </div>
+          {erro ? <Aviso>{erro}</Aviso> : null}
+          {pronto ? (
+            <p role="status" className="rounded-[10px] bg-superficie-alta px-3 py-2.5 text-[13px] font-semibold text-ouro">
+              Pronto! A agenda dos clientes foi atualizada.
+            </p>
+          ) : null}
+          <Botao disabled={salvando} onClick={() => void salvar()}>
+            {salvando ? "Salvando…" : "Salvar"}
+          </Botao>
+        </>
+      ) : cfg.carregando ? (
+        <Carregando />
+      ) : null}
+    </div>
+  );
 }
 
 export default function Horarios() {
@@ -286,9 +400,7 @@ export default function Horarios() {
             ))}
           </div>
           {erro ? <Aviso>{erro}</Aviso> : null}
-          <p className="text-xs text-texto-suave">
-            Os clientes marcam de segunda a sábado da semana atual. A semana seguinte abre no sábado às 23h.
-          </p>
+          {dono ? <AgendaClientes /> : null}
         </div>
       </div>
 

@@ -4,6 +4,7 @@
 import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
+import { diasAbertosCliente } from "../../shared/janela";
 import { hhmm, instanteUTC } from "../../shared/tempo";
 import { normalizarTelefone } from "../../shared/telefone";
 import {
@@ -11,6 +12,7 @@ import {
   type ServicoLinha,
   contarFuturosDoCliente,
   diasAbertos,
+  lerConfigAgenda,
   horariosLivres,
   inserirSemConflito,
 } from "../db/consultas";
@@ -50,7 +52,7 @@ publico.get("/info", async (c) => {
   const bloqueado = await limitarConsulta(c);
   if (bloqueado) return bloqueado;
   const db = c.env.DB;
-  const [cfg, servicos, barbeiros, dias] = await Promise.all([
+  const [cfg, servicos, barbeiros, abertura] = await Promise.all([
     db
       .prepare(
         "SELECT chave, valor FROM config WHERE chave IN ('nome_barbearia', 'whatsapp_barbearia', 'endereco')",
@@ -68,8 +70,9 @@ publico.get("/info", async (c) => {
            ORDER BY u.nome`,
       )
       .all<{ id: string; nome: string }>(),
-    diasAbertos(db, new Date()),
+    lerConfigAgenda(db),
   ]);
+  const dias = diasAbertosCliente(new Date(), abertura);
   const v = Object.fromEntries(cfg.results.map((r) => [r.chave, r.valor]));
   return c.json({
     barbearia: {
@@ -80,6 +83,7 @@ publico.get("/info", async (c) => {
     servicos: servicos.results,
     barbeiros: barbeiros.results,
     dias,
+    abertura: { dia: abertura.aberturaDia, minuto: abertura.aberturaMinuto, semanas: abertura.semanas },
     turnstileSiteKey: c.env.TURNSTILE_SITE_KEY ?? "",
   });
 });

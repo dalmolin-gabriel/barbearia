@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { diasAbertosCliente } from "../src/shared/janela";
 import { diaSemanaDe, hhmm, instanteUTC, partesLocais, somarDias } from "../src/shared/tempo";
 
-const cfg = { aberturaDia: 6, aberturaMinuto: 23 * 60 };
+const cfg = { aberturaDia: 6, aberturaMinuto: 23 * 60, semanas: 1 as const };
 const semanaSeguinte = [
   "2026-12-07",
   "2026-12-08",
@@ -42,6 +42,47 @@ describe("diasAbertosCliente", () => {
   });
   it("segunda 08:00 vai até sábado", () => {
     expect(diasAbertosCliente(instanteUTC("2026-12-07", 8 * 60), cfg)).toEqual(semanaSeguinte);
+  });
+});
+
+describe("diasAbertosCliente configurável", () => {
+  const sexta18 = { aberturaDia: 5, aberturaMinuto: 18 * 60, semanas: 1 as const };
+  it("abertura sexta 18:00: sexta 17:59 ainda só vai até sábado", () => {
+    expect(diasAbertosCliente(instanteUTC("2026-12-04", 17 * 60 + 59), sexta18)).toEqual(["2026-12-04", "2026-12-05"]);
+  });
+  it("abertura sexta 18:00: sexta 18:00 abre a semana seguinte", () => {
+    expect(diasAbertosCliente(instanteUTC("2026-12-04", 18 * 60), sexta18)).toEqual([
+      "2026-12-04",
+      "2026-12-05",
+      ...semanaSeguinte,
+    ]);
+  });
+  it("abertura sexta 18:00: sábado já está aberto", () => {
+    expect(diasAbertosCliente(instanteUTC("2026-12-05", 9 * 60), sexta18)).toEqual(["2026-12-05", ...semanaSeguinte]);
+  });
+  it("semanas=2 numa terça vai até o sábado seguinte", () => {
+    expect(diasAbertosCliente(instanteUTC("2026-12-01", 600), { ...cfg, semanas: 2 })).toEqual([
+      "2026-12-01",
+      "2026-12-02",
+      "2026-12-03",
+      "2026-12-04",
+      "2026-12-05",
+      ...semanaSeguinte,
+    ]);
+  });
+  it("semanas=2 depois da abertura vai a três semanas", () => {
+    const dias = diasAbertosCliente(instanteUTC("2026-12-05", 23 * 60), { ...cfg, semanas: 2 });
+    expect(dias).toHaveLength(1 + 6 + 6);
+    expect(dias.at(-1)).toBe("2026-12-19");
+  });
+  it("semanas=2 no domingo mostra duas semanas", () => {
+    const dias = diasAbertosCliente(instanteUTC("2026-12-06", 9 * 60), { ...cfg, semanas: 2 });
+    expect(dias).toHaveLength(12);
+    expect(dias[0]).toBe("2026-12-07");
+    expect(dias.at(-1)).toBe("2026-12-19");
+  });
+  it("domingo com semanas=1 nunca inclui o domingo", () => {
+    expect(diasAbertosCliente(instanteUTC("2026-12-06", 9 * 60), sexta18)).toEqual(semanaSeguinte);
   });
 });
 

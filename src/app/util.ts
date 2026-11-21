@@ -94,3 +94,18 @@ export function dataPorExtenso(data: string): string {
 }
 
 export { somarDias, diaSemanaDe };
+
+const DIAS_ABERTURA = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+
+/** Nome do dia da semana (1 a 6) para a abertura: "sábado", "sexta"… */
+export const nomeDiaAbertura = (dia: number) => DIAS_ABERTURA[dia] ?? "sábado";
+
+/** "no sábado" / "na sexta": só o sábado é masculino. */
+export const noDiaAbertura = (dia: number) => `${dia === 6 ? "no" : "na"} ${nomeDiaAbertura(dia)}`;
+
+/** "23h" ou "18h30" (ou "18h30" para minutos quebrados). */
+export const horaAbertura = (min: number) => {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, "0")}`;
+};

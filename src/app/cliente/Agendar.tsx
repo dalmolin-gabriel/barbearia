@@ -16,6 +16,8 @@ import {
   dataDe,
   diaExtenso,
   horaDe,
+  horaAbertura,
+  noDiaAbertura,
   duracao,
   iniciais,
   mascararTelefone,
@@ -306,7 +308,7 @@ function Fluxo({ info }: { info: Info }) {
                     Agenda aberta até {diaExtenso(sabadoLimite, true)}.
                   </b>
                   <div className="text-texto-suave">
-                    A próxima semana (seg a sáb) abre no sábado às 23h.
+                    A próxima semana (seg a sáb) abre {noDiaAbertura(info.abertura.dia)} às {horaAbertura(info.abertura.minuto)}.
                   </div>
                 </div>
               ) : null}

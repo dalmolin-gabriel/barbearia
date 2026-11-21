@@ -1,6 +1,6 @@
 // Consultas compartilhadas da agenda: horários ocupados e gravação sem conflito.
 
-import { diasAbertosCliente } from "../../shared/janela";
+import { diasAbertosCliente, type ConfigJanela } from "../../shared/janela";
 import {
   diaSemanaDe,
   instanteUTC,
@@ -134,23 +134,22 @@ type ExpedienteLinha = {
   almoco_fim_min: number | null;
 };
 
-/** Datas (AAAA-MM-DD) que o cliente pode marcar agora, conforme a configuração de abertura. */
-export async function diasAbertos(
-  db: D1Database,
-  agora: Date,
-): Promise<string[]> {
+/** Configuração da janela do cliente (padrão: sábado 23h, 1 semana). */
+export async function lerConfigAgenda(db: D1Database): Promise<ConfigJanela> {
   const { results } = await db
-    .prepare(
-      "SELECT chave, valor FROM config WHERE chave IN ('abertura_dia', 'abertura_minuto')",
-    )
+    .prepare("SELECT chave, valor FROM config WHERE chave IN ('abertura_dia', 'abertura_minuto', 'semanas_abertas')")
     .all<{ chave: string; valor: string }>();
-  const cfg = Object.fromEntries(
-    results.map((r) => [r.chave, Number(r.valor)]),
-  );
-  return diasAbertosCliente(agora, {
+  const cfg = Object.fromEntries(results.map((r) => [r.chave, Number(r.valor)]));
+  return {
     aberturaDia: cfg.abertura_dia ?? 6,
     aberturaMinuto: cfg.abertura_minuto ?? 1380,
-  });
+    semanas: cfg.semanas_abertas === 2 ? 2 : 1,
+  };
+}
+
+/** Datas (AAAA-MM-DD) que o cliente pode marcar agora, conforme a configuração de abertura. */
+export async function diasAbertos(db: D1Database, agora: Date): Promise<string[]> {
+  return diasAbertosCliente(agora, await lerConfigAgenda(db));
 }
 
 /**

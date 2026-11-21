@@ -18,9 +18,9 @@ it("cria o esquema completo num banco sem tabelas", async () => {
   ).all();
   expect(tabelas.results).toHaveLength(4);
   const cfg = await env.DB.prepare("SELECT COUNT(*) AS n FROM config").first<{ n: number }>();
-  expect(cfg?.n).toBe(5);
+  expect(cfg?.n).toBe(6);
   const m = await env.DB.prepare("SELECT COUNT(*) AS n FROM _migracoes").first<{ n: number }>();
-  expect(m?.n).toBe(2);
+  expect(m?.n).toBe(3);
 });
 
 it("aplicar as migrações duas vezes (inclusive após o applyD1Migrations) não falha", async () => {
@@ -34,5 +34,5 @@ it("registra a migração quando a coluna já existe (aplicada por outro caminho
   await env.DB.prepare("DELETE FROM _migracoes WHERE nome = '0002_token_cliente.sql'").run();
   await aplicarMigracoes(env.DB);
   const m = await env.DB.prepare("SELECT COUNT(*) AS n FROM _migracoes").first<{ n: number }>();
-  expect(m?.n).toBe(2);
+  expect(m?.n).toBe(3);
 });

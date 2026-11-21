@@ -34,6 +34,7 @@ repositório `barbearia`, a branch de produção acima e preencha os dois comand
 Faça o primeiro deploy (a aba **Deployments** mostra o andamento). O banco de dados (D1,
 chamado `padilhas`) é criado sozinho nesse deploy e as tabelas são montadas sozinhas no primeiro
 acesso ao site. Não precisa fazer nada no banco.
+O dia e a hora em que a próxima semana abre para os clientes (e quantas semanas ficam abertas) o dono muda no painel, em **Horários e folgas > Agenda dos clientes**.
 
 Quando terminar, o endereço do site aparece no topo da página do projeto, parecido com
 `https://barbearia.seu-usuario.workers.dev`. Anote.

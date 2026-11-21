@@ -71,6 +71,7 @@ export type Info = {
   servicos: { id: string; nome: string; duracao_min: number; preco_centavos: number }[];
   barbeiros: { id: string; nome: string }[];
   dias: string[];
+  abertura: { dia: number; minuto: number; semanas: number };
   turnstileSiteKey: string;
 };
 

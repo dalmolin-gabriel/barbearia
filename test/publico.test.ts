@@ -133,7 +133,7 @@ describe("API pública de agendamento", () => {
         "Corte",
       ]);
       expect(j.dias).toEqual(
-        diasAbertosCliente(AGORA, { aberturaDia: 6, aberturaMinuto: 1380 }),
+        diasAbertosCliente(AGORA, { aberturaDia: 6, aberturaMinuto: 1380, semanas: 1 }),
       );
       expect(j.turnstileSiteKey).toBeTruthy();
     });
