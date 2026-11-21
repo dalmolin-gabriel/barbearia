@@ -8,7 +8,9 @@ export async function validarTurnstile(token: string, ip: string, segredo: strin
       method: "POST",
       body: new URLSearchParams({ secret: segredo, response: token, remoteip: ip }),
     });
-    const dados = (await resposta.json()) as { success?: boolean };
+    const dados = (await resposta.json()) as { success?: boolean; "error-codes"?: string[] };
+    // Registra o motivo da recusa (sem o segredo nem o token) para aparecer nos logs do Cloudflare.
+    if (dados.success !== true) console.warn("Turnstile recusou:", (dados["error-codes"] ?? []).join(",") || "sem código");
     return dados.success === true;
   } catch {
     return false;
