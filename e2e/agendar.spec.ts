@@ -67,15 +67,38 @@ async function agendarCorte(page: Page, nome: string, celular: string, ultimoDia
   const total = await dias.count();
   let achou = false;
   let marcado = "";
-  for (let n = 0; n < total && !achou; n++) {
-    const dia = dias.nth(ultimoDia ? total - 1 - n : n);
-    marcado = (await dia.getAttribute("aria-label")) ?? "";
-    await dia.click();
-    await horario.or(page.getByText("Sem horários livres neste dia.")).first().waitFor();
-    achou = (await horario.count()) > 0;
+  if (ultimoDia) {
+    // Precisa de um horário com pelo menos 2h15 de antecedência (senão o cancelamento não é oferecido).
+    // Primeiro dia habilitado: o ÚLTIMO horário livre; se não der, o primeiro horário dos dias seguintes.
+    const info = (await (await page.request.get("/api/publico/info")).json()) as { dias: string[] };
+    const limite = Date.now() + 135 * 60_000;
+    const horarios = page.locator("button[aria-pressed]").filter({ hasText: /^\d\d:\d\d$/ });
+    for (let n = 0; n < total && !achou; n++) {
+      const dia = dias.nth(n);
+      const data = info.dias[n];
+      await dia.click();
+      await horario.or(page.getByText("Sem horários livres neste dia.")).first().waitFor();
+      const qtd = await horarios.count();
+      if (qtd === 0 || !data) continue;
+      const alvo = n === 0 ? horarios.nth(qtd - 1) : horarios.first();
+      const hora = ((await alvo.textContent()) ?? "").trim();
+      if (new Date(`${data}T${hora}:00-03:00`).getTime() < limite) continue;
+      marcado = (await dia.getAttribute("aria-label")) ?? "";
+      await alvo.click();
+      achou = true;
+    }
+    test.skip(!achou, "Sem horário livre com 2h15 de antecedência na janela atual.");
+  } else {
+    for (let n = 0; n < total && !achou; n++) {
+      const dia = dias.nth(n);
+      marcado = (await dia.getAttribute("aria-label")) ?? "";
+      await dia.click();
+      await horario.or(page.getByText("Sem horários livres neste dia.")).first().waitFor();
+      achou = (await horario.count()) > 0;
+    }
+    expect(achou, "algum dia habilitado deveria ter horário livre").toBe(true);
+    await horario.click();
   }
-  expect(achou, "algum dia habilitado deveria ter horário livre").toBe(true);
-  await horario.click();
 
   // 3. Dados, aceite e Turnstile
   await page.getByLabel("Seu nome").fill(nome);
@@ -126,9 +149,9 @@ test("cliente cancela o próprio horário pelo link e o painel não o lista mais
   await page.getByRole("button", { name: /Escolher data/ }).click();
   const alvo = page.locator(`button[aria-label='${dia}']`);
   if (!(await alvo.isVisible())) await page.getByRole("button", { name: "Próximo mês" }).click();
-  const resposta = page.waitForResponse((r) => r.url().includes(`/api/agenda?data=${dia}`) && r.ok());
   await alvo.click();
-  const agenda = (await (await resposta).json()) as { atendimentos: { cliente_nome: string; status: string }[] };
+  // Pode ser o próprio dia que o painel já mostra (sem nova requisição): consulta a agenda direto.
+  const agenda = (await (await page.request.get(`/api/agenda?data=${dia}`)).json()) as { atendimentos: { cliente_nome: string; status: string }[] };
   expect(agenda.atendimentos.find((x) => x.cliente_nome === "Maria Cancela")?.status).toBe("cancelado");
   // Se só há um dia habilitado, o João (outro teste) divide o dia com a Maria: aí o total não zera.
   if (dia !== diaMarcado) await expect(page.getByText("0 clientes · 0 atendidos")).toBeVisible();
