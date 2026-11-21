@@ -7,6 +7,7 @@ import { bloqueios } from "./rotas/bloqueios";
 import { cadastro } from "./rotas/cadastro";
 import { clientes } from "./rotas/clientes";
 import { configAgenda } from "./rotas/config";
+import { conta } from "./rotas/conta";
 import { equipe } from "./rotas/equipe";
 import { expediente } from "./rotas/expediente";
 import { publico } from "./rotas/publico";
@@ -42,6 +43,7 @@ app.use("/api/*", async (c, proximo) => {
 app.route("/api/saude", saude);
 app.route("/api/auth", auth);
 app.route("/api/cadastro", cadastro);
+app.route("/api/conta", conta);
 app.route("/api/publico", publico);
 app.route("/api/push", push);
 app.route("/api/agenda", agenda);

@@ -10,6 +10,7 @@ import PainelLayout from "./painel/PainelLayout";
 // Telas do painel são carregadas sob demanda: o cliente que só agenda não baixa o painel.
 const Login = lazy(() => import("./painel/Login"));
 const Cadastro = lazy(() => import("./painel/Cadastro"));
+const EsqueciSenha = lazy(() => import("./painel/EsqueciSenha"));
 const Hoje = lazy(() => import("./painel/Hoje"));
 const Lembretes = lazy(() => import("./painel/Lembretes"));
 const Servicos = lazy(() => import("./painel/Servicos"));
@@ -28,6 +29,7 @@ export function Rotas() {
           <Route path="/meu-horario/:token" element={<MeuHorario />} />
           <Route path="/privacidade" element={<Privacidade />} />
           <Route path="/painel/entrar" element={<Login />} />
+          <Route path="/painel/esqueci-senha" element={<EsqueciSenha />} />
           <Route path="/painel/cadastro" element={<Cadastro />} />
           <Route path="/painel/primeiro-acesso" element={<Navigate to="/painel/cadastro" replace />} />
           <Route path="/painel" element={<PainelLayout />}>

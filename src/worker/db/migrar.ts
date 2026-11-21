@@ -4,6 +4,7 @@
 import inicial from "../../../migrations/0001_inicial.sql?raw";
 import tokenCliente from "../../../migrations/0002_token_cliente.sql?raw";
 import semanasAbertas from "../../../migrations/0003_semanas_abertas.sql?raw";
+import recuperacao from "../../../migrations/0004_recuperacao.sql?raw";
 
 // Em ordem de nome de arquivo. Nova migração: importe e acrescente ao fim da lista.
 // `jaAplicada` é para migração que não é idempotente (ALTER TABLE ADD COLUMN): se o efeito já
@@ -24,6 +25,11 @@ const MIGRACOES: Migracao[] = [
   },
   // Só um INSERT OR IGNORE: pode rodar de novo sem efeito, então não precisa de `jaAplicada`.
   { nome: "0003_semanas_abertas.sql", sql: semanasAbertas },
+  {
+    nome: "0004_recuperacao.sql",
+    sql: recuperacao,
+    jaAplicada: (db) => temColuna(db, "usuarios", "recuperacao_hash"),
+  },
 ];
 
 // Separa o arquivo em comandos: tira comentários de linha e corta em ";".

@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api, mensagemDe } from "../api";
 import { Aviso } from "../componentes/Aviso";
 import { Botao } from "../componentes/Botao";
@@ -7,6 +7,7 @@ import { Logo } from "../componentes/Logo";
 
 export default function Login() {
   const navegar = useNavigate();
+  const aviso = (useLocation().state as { aviso?: string } | null)?.aviso;
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -73,10 +74,14 @@ export default function Login() {
           onChange={(e) => setSenha(e.target.value)}
         />
       </div>
+      {aviso ? <Aviso tipo="ok">{aviso}</Aviso> : null}
       {erro ? <Aviso>{erro}</Aviso> : null}
       <Botao type="submit" disabled={enviando || !email.trim() || !senha}>
         {enviando ? "Entrando…" : "Entrar"}
       </Botao>
+      <Link to="/painel/esqueci-senha" className="text-center text-[15px] font-semibold text-ouro">
+        Esqueci minha senha
+      </Link>
       {cadastroAberto ? (
         <Link to="/painel/cadastro" className="text-center text-[15px] font-semibold text-ouro">
           Não tem conta? Cadastre-se

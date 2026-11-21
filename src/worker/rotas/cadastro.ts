@@ -8,6 +8,7 @@ import { comandosExpedientePadrao } from "../db/expediente-padrao";
 import type { AppEnv } from "../env";
 import { emailSchema } from "../seguranca/email";
 import { consumirLimite } from "../seguranca/limite";
+import { gerarCodigoRecuperacao } from "../seguranca/recuperacao";
 import { gerarHashSenha } from "../seguranca/senha";
 import { criarSessao, definirCookieSessao } from "../seguranca/sessao";
 
@@ -56,6 +57,7 @@ cadastro.post(
     const nome = nomeDoEmail(d.email);
     const id = crypto.randomUUID();
     const hash = await gerarHashSenha(d.senha);
+    const recuperacao = await gerarCodigoRecuperacao();
     const agora = new Date().toISOString();
     // Os três serviços de exemplo entram num único INSERT, só se não houver nenhum serviço
     // (por exemplo, depois de "Zerar sistema", que mantém os serviços).
@@ -70,10 +72,10 @@ cadastro.post(
       resultados = await db.batch([
         db
           .prepare(
-            `INSERT INTO usuarios (id, nome, usuario, senha_hash, papel, ativo, criado_em)
-             SELECT ?1, ?2, ?3, ?4, 'dono', 1, ?5 WHERE NOT EXISTS (SELECT 1 FROM usuarios)`,
+            `INSERT INTO usuarios (id, nome, usuario, senha_hash, papel, ativo, criado_em, recuperacao_hash, recuperacao_criado_em)
+             SELECT ?1, ?2, ?3, ?4, 'dono', 1, ?5, ?6, ?5 WHERE NOT EXISTS (SELECT 1 FROM usuarios)`,
           )
-          .bind(id, nome, d.email, hash, agora),
+          .bind(id, nome, d.email, hash, agora, recuperacao.hash),
         ...comandosExpedientePadrao(db, id),
         db
           .prepare(
@@ -93,6 +95,7 @@ cadastro.post(
 
     const token = await criarSessao(db, id);
     definirCookieSessao(c, token);
-    return c.json({ usuario: { id, nome, papel: "dono" } }, 201);
+    // O código de recuperação só aparece aqui, uma vez; no banco fica apenas o hash.
+    return c.json({ usuario: { id, nome, papel: "dono" }, codigoRecuperacao: recuperacao.codigo }, 201);
   },
 );

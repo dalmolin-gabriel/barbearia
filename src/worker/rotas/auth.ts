@@ -7,7 +7,8 @@ import type { AppEnv } from "../env";
 import { emailSchema } from "../seguranca/email";
 import { consumirLimite } from "../seguranca/limite";
 import { exigirLogin } from "../seguranca/middleware";
-import { conferirSenha } from "../seguranca/senha";
+import { normalizarCodigo } from "../seguranca/recuperacao";
+import { conferirSenha, gerarHashSenha } from "../seguranca/senha";
 import { NOME_COOKIE, apagarSessao, criarSessao, definirCookieSessao, opcoesCookieSessao } from "../seguranca/sessao";
 
 export const auth = new Hono<AppEnv>();
@@ -91,4 +92,51 @@ auth.post("/sair", async (c) => {
 auth.get("/eu", exigirLogin(), (c) => {
   const u = c.var.usuario;
   return c.json({ usuario: { id: u.id, nome: u.nome, papel: u.papel } });
+});
+
+const MSG_RECUPERAR = "E-mail ou código de recuperação incorretos.";
+
+const corpoRecuperar = z.object({
+  email: emailSchema,
+  codigo: z.string().min(1).max(40),
+  novaSenha: z.string().min(8).max(200),
+});
+
+type LinhaRecuperar = { id: string; papel: string; ativo: number; recuperacao_hash: string | null };
+
+// Redefine a senha do dono com o código de recuperação (uso único). Pública: por isso há limite por
+// IP e por e-mail, e todo erro devolve a mesma resposta, com o mesmo gasto de PBKDF2.
+auth.post("/recuperar", limiteCorpo, async (c) => {
+  const db = c.env.DB;
+  const ip = c.req.header("CF-Connecting-IP") ?? "desconhecido";
+  if (!(await consumirLimite(db, `recuperar:${ip}`, 5, 3600))) return c.json({ erro: MSG_BLOQUEADO }, 429);
+  const analise = corpoRecuperar.safeParse(await c.req.json().catch(() => null));
+  if (!analise.success) return c.json({ erro: MSG_RECUPERAR }, 400);
+  const { email, codigo, novaSenha } = analise.data;
+  if (!(await consumirLimite(db, `recuperar-email:${email.toLowerCase()}`, 5, 24 * 3600)))
+    return c.json({ erro: "Muitas tentativas para este e-mail. Tente de novo amanhã." }, 429);
+
+  const linha = await db
+    .prepare("SELECT id, papel, ativo, recuperacao_hash FROM usuarios WHERE usuario = ?")
+    .bind(email)
+    .first<LinhaRecuperar>();
+  // Sempre um PBKDF2, exista o usuário (ou o código) ou não.
+  const confere = await conferirSenha(normalizarCodigo(codigo), linha?.recuperacao_hash ?? HASH_FALSO);
+  if (!linha?.recuperacao_hash || !confere || linha.papel !== "dono" || linha.ativo !== 1)
+    return c.json({ erro: MSG_RECUPERAR }, 400);
+
+  const hash = await gerarHashSenha(novaSenha);
+  // Numa transação só: nova senha, código gasto, sessões e bloqueio de login apagados. O UPDATE
+  // exige o código ainda guardado: dois pedidos simultâneos com o mesmo código não passam ambos.
+  const [troca] = await db.batch([
+    db
+      .prepare(
+        "UPDATE usuarios SET senha_hash = ?1, recuperacao_hash = NULL, recuperacao_criado_em = NULL WHERE id = ?2 AND recuperacao_hash = ?3",
+      )
+      .bind(hash, linha.id, linha.recuperacao_hash),
+    db.prepare("DELETE FROM sessoes WHERE usuario_id = ?").bind(linha.id),
+    db.prepare("DELETE FROM tentativas_login WHERE usuario = ?").bind(email),
+  ]);
+  if (troca?.meta.changes !== 1) return c.json({ erro: MSG_RECUPERAR }, 400);
+  return c.body(null, 204);
 });

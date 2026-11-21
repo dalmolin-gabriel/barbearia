@@ -4,6 +4,10 @@ test.describe.configure({ mode: "serial" });
 
 const EMAIL = "padilha@exemplo.com";
 const SENHA = "senha-de-teste-123";
+const SENHA_NOVA = "senha-nova-456";
+
+// Código de recuperação mostrado uma vez no cadastro (capturado no primeiro teste).
+let codigoRecuperacao = "";
 
 // O script do Turnstile vem de challenges.cloudflare.com, que pode estar bloqueado na rede de
 // teste. Troca por um stub que chama o callback com um token qualquer; a chave secreta de teste
@@ -38,6 +42,12 @@ test("cadastro aberto cria o dono e depois fecha", async ({ page }) => {
 
   await page.getByLabel("E-mail").fill(EMAIL);
   await page.getByRole("button", { name: "Criar conta" }).click();
+  // Tela única do código de recuperação: só depois de "Já guardei" entra no painel.
+  await expect(page.getByRole("heading", { name: "Guarde este código de recuperação" })).toBeVisible();
+  codigoRecuperacao = ((await page.getByTestId("codigo-recuperacao").textContent()) ?? "").trim();
+  expect(codigoRecuperacao).toMatch(/^[2-9A-HJKMNP-Z]{4}(-[2-9A-HJKMNP-Z]{4}){2}$/);
+  await expect(page.getByRole("button", { name: "Copiar" })).toBeVisible();
+  await page.getByRole("button", { name: "Já guardei" }).click();
   await expect(page).toHaveURL(/\/painel$/);
   // No celular o menu é uma gaveta: abre pelo botão ☰ e mostra a navegação.
   await page.getByRole("button", { name: "Abrir menu" }).click();
@@ -224,10 +234,58 @@ test("dono vê o agendamento em Hoje e só marca Chegou no dia do atendimento", 
   await expect(page.getByText(diaMarcado > hoje ? "Cliente Hoje" : "João Teste")).toBeVisible();
 });
 
-test("dono zera o sistema e o Cadastre-se volta", async ({ page }) => {
+test("dono esquece a senha e redefine com o código de recuperação", async ({ page }) => {
   await page.goto("/painel/entrar");
   await page.getByLabel("E-mail").fill(EMAIL);
   await page.getByLabel("Senha").fill(SENHA);
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page).toHaveURL(/\/painel$/);
+  await page.waitForLoadState("networkidle");
+  await page.request.post("/api/auth/sair", { headers: { Origin: new URL(page.url()).origin } });
+
+  await page.goto("/painel/entrar");
+  await page.getByRole("link", { name: "Esqueci minha senha" }).click();
+  await expect(page).toHaveURL(/\/painel\/esqueci-senha/);
+  await expect(page.getByText("É barbeiro? Peça ao dono para criar uma nova senha para você em Equipe.")).toBeVisible();
+
+  // Código errado: mensagem genérica.
+  await page.getByLabel("E-mail").fill(EMAIL);
+  await page.getByLabel("Código de recuperação").fill("ABCD-EFGH-JKMN");
+  await page.getByLabel(/^Nova senha/).fill(SENHA_NOVA);
+  await page.getByLabel("Confirmar nova senha").fill(SENHA_NOVA);
+  await page.getByRole("button", { name: "Alterar senha" }).click();
+  await expect(page.getByRole("alert")).toContainText("E-mail ou código de recuperação incorretos.");
+
+  await page.getByLabel("Código de recuperação").fill(codigoRecuperacao.toLowerCase());
+  await page.getByRole("button", { name: "mostrar" }).click();
+  await page.getByRole("button", { name: "Alterar senha" }).click();
+  await expect(page).toHaveURL(/\/painel\/entrar/);
+  await expect(page.getByText("Senha alterada! Entre com a nova senha.")).toBeVisible();
+
+  // A senha antiga não entra mais; a nova, sim.
+  await page.getByLabel("E-mail").fill(EMAIL);
+  await page.getByLabel("Senha").fill(SENHA);
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("alert")).toContainText("E-mail ou senha incorretos.");
+  await page.getByLabel("Senha").fill(SENHA_NOVA);
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page).toHaveURL(/\/painel$/);
+
+  // O código é de uso único: em Equipe consta "não criado" e dá para gerar outro.
+  await page.goto("/painel/equipe");
+  await expect(page.getByText(/Código de recuperação: não criado/)).toBeVisible();
+  await page.getByLabel("Confirme com a sua senha").fill(SENHA_NOVA);
+  await page.getByRole("button", { name: "Gerar novo código de recuperação" }).click();
+  await expect(page.getByRole("heading", { name: "Guarde este código de recuperação" })).toBeVisible();
+  await expect(page.getByTestId("codigo-recuperacao")).not.toHaveText(codigoRecuperacao);
+  await page.getByRole("button", { name: "Já guardei" }).click();
+  await expect(page.getByText(/Código de recuperação: criado em \d\d\/\d\d\/\d{4}/)).toBeVisible();
+});
+
+test("dono zera o sistema e o Cadastre-se volta", async ({ page }) => {
+  await page.goto("/painel/entrar");
+  await page.getByLabel("E-mail").fill(EMAIL);
+  await page.getByLabel("Senha").fill(SENHA_NOVA);
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page).toHaveURL(/\/painel$/);
 
@@ -245,7 +303,7 @@ test("dono zera o sistema e o Cadastre-se volta", async ({ page }) => {
   await expect(page.getByRole("alert")).toContainText("Senha incorreta.");
   await expect(page).toHaveURL(/\/painel\/equipe/);
 
-  await page.getByLabel("Sua senha atual").fill(SENHA);
+  await page.getByLabel("Sua senha atual").fill(SENHA_NOVA);
   await zerar.click();
   await expect(page).toHaveURL(/\/painel\/cadastro/);
   await expect(page.getByRole("heading", { name: "Criar conta" })).toBeVisible();

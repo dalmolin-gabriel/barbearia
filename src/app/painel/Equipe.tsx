@@ -9,6 +9,8 @@ import { Avatar } from "../componentes/Avatar";
 import { Pagina } from "../componentes/Pagina";
 import { useCarregar } from "../hooks";
 import { useSessao } from "../sessao";
+import { dataDe } from "../util";
+import { CodigoRecuperacao } from "./CodigoRecuperacao";
 import Notificacoes from "./Notificacoes";
 
 type Membro = {
@@ -109,6 +111,7 @@ export default function Equipe() {
         </div>
         <div className="flex flex-col gap-4">
           <Notificacoes />
+          {eu.papel === "dono" ? <Seguranca /> : null}
           {eu.papel === "dono" ? <ZerarSistema /> : null}
         </div>
       </div>
@@ -253,6 +256,70 @@ function EditarMembro({ membro, ehEu, aoFechar, aoSalvo }: { membro: Membro; ehE
         )}
       </div>
     </Folha>
+  );
+}
+
+/** Segurança (só o dono): código de recuperação da senha. Gerar um novo invalida o anterior. */
+function Seguranca() {
+  const estado = useCarregar(() => api<{ criadoEm: string | null }>("/api/conta/recuperacao"), []);
+  const [senha, setSenha] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [codigo, setCodigo] = useState<string | null>(null);
+
+  async function gerar(e: FormEvent) {
+    e.preventDefault();
+    setEnviando(true);
+    setErro(null);
+    try {
+      const r = await api<{ codigoRecuperacao: string }>("/api/conta/recuperacao", { corpo: { senha } });
+      setSenha("");
+      setCodigo(r.codigoRecuperacao);
+      void estado.recarregar();
+    } catch (e) {
+      setErro(mensagemDe(e));
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  const criadoEm = estado.dados?.criadoEm;
+  const quando = criadoEm ? dataDe(criadoEm).split("-").reverse().join("/") : null;
+
+  return (
+    <>
+      <form onSubmit={gerar} className="cartao flex flex-col gap-3 p-3.5" aria-labelledby="seg-titulo">
+        <h2 id="seg-titulo" className="text-base font-semibold">
+          Segurança
+        </h2>
+        <p className="text-sm text-texto-suave">
+          Código de recuperação: {estado.dados ? (quando ? `criado em ${quando}` : "não criado") : "…"}. Ele permite criar uma nova senha se
+          você esquecer a atual. Gerar um novo faz o anterior parar de funcionar.
+        </p>
+        <div>
+          <label className="rotulo block" htmlFor="s-senha">
+            Confirme com a sua senha
+          </label>
+          <input
+            id="s-senha"
+            className="campo"
+            type="password"
+            autoComplete="current-password"
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
+          />
+        </div>
+        {erro ? <Aviso>{erro}</Aviso> : null}
+        <Botao type="submit" variante="secundario" pequeno disabled={enviando || !senha}>
+          {enviando ? "Gerando…" : "Gerar novo código de recuperação"}
+        </Botao>
+      </form>
+      {codigo ? (
+        <Folha aberta aoFechar={() => setCodigo(null)} rotulo="Código de recuperação">
+          <CodigoRecuperacao codigo={codigo} rotuloBotao="Já guardei" aoContinuar={() => setCodigo(null)} />
+        </Folha>
+      ) : null}
+    </>
   );
 }
 

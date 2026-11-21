@@ -18,7 +18,7 @@ const MSG_GENERICA = "Algo deu errado. Tente de novo.";
 
 function dentroDoPainelLogado(): boolean {
   const p = window.location.pathname;
-  return p.startsWith("/painel") && p !== "/painel/entrar" && p !== "/painel/cadastro" && p !== "/painel/primeiro-acesso";
+  return p.startsWith("/painel") && p !== "/painel/entrar" && p !== "/painel/cadastro" && p !== "/painel/esqueci-senha" && p !== "/painel/primeiro-acesso";
 }
 
 export async function api<T>(caminho: string, opcoes: OpcoesApi = {}): Promise<T> {

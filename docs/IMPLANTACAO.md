@@ -151,9 +151,24 @@ abre o endereço do painel e cria a conta dele (passo 6). Depois, ele cadastra a
 Não dá para desfazer (só pelo Time Travel, no passo 12). Quem for instalar o app no celular e ativar
 as notificações (passos 8 e 9) deve fazer isso depois da entrega, já com a conta do dono.
 
-## 11. Se esquecer a senha do dono
+## 11. Se esquecer a senha
 
-O sistema não tem "esqueci minha senha" para o dono. Para redefinir, pelo painel do Cloudflare:
+**Dono (com o código de recuperação).** Ao criar a conta, o sistema mostra uma vez o
+**código de recuperação** (algo como `K7P2-9QXM-4TBH`). Guarde-o fora do celular: tire um print e
+anote num papel. Se esquecer a senha:
+
+1. Na tela de entrada do painel, toque em **Esqueci minha senha**.
+2. Informe o e-mail, o código de recuperação e a nova senha (mínimo 8 caracteres), e confirme.
+3. Entre com a nova senha. Todos os logins antigos são derrubados.
+
+O código vale **uma vez só**: depois de usado, entre no painel e gere outro em
+**Equipe -> Segurança -> Gerar novo código de recuperação** (pede a sua senha atual; o código
+anterior para de funcionar). Se tiver perdido o código, mas ainda estiver logado, gere um novo ali
+mesmo. Há limite de tentativas (5 por hora por aparelho e 5 por dia por e-mail).
+
+**Barbeiro.** Peça ao dono para trocar a senha em **Equipe -> Editar**.
+
+**Último recurso (sem o código e sem login).** Redefinir direto no banco, pelo painel do Cloudflare:
 
 1. No seu computador, com o Node instalado e o repositório baixado, rode:
    `node scripts/hash-senha.mjs 'NOVA-SENHA-AQUI'`
@@ -162,9 +177,7 @@ O sistema não tem "esqueci minha senha" para o dono. Para redefinir, pelo paine
 3. Rode (troque o hash e o e-mail pelos seus):
    `UPDATE usuarios SET senha_hash = 'COLE-O-HASH-AQUI' WHERE usuario = 'seu-email@exemplo.com';`
 4. Em seguida, para derrubar logins antigos: `DELETE FROM sessoes;`
-5. Entre com a nova senha.
-
-Para a conta de um barbeiro, o dono troca a senha direto na tela de Equipe.
+5. Entre com a nova senha e gere um novo código de recuperação em Equipe.
 
 ## 12. Backups
 

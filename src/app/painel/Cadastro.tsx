@@ -5,6 +5,7 @@ import { Aviso } from "../componentes/Aviso";
 import { Botao } from "../componentes/Botao";
 import { Carregando } from "../componentes/Carregando";
 import { Logo } from "../componentes/Logo";
+import { CodigoRecuperacao } from "./CodigoRecuperacao";
 
 /** Cadastro: cria a primeira conta (o dono). Só fica aberto enquanto não existe nenhuma conta. */
 export default function Cadastro() {
@@ -16,6 +17,7 @@ export default function Cadastro() {
   const [mostrar, setMostrar] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [codigo, setCodigo] = useState<string | null>(null);
 
   useEffect(() => {
     let vivo = true;
@@ -33,8 +35,8 @@ export default function Cadastro() {
     setEnviando(true);
     setErro(null);
     try {
-      await api("/api/cadastro", { corpo: { email: email.trim(), senha } });
-      navegar("/painel", { replace: true });
+      const r = await api<{ codigoRecuperacao: string }>("/api/cadastro", { corpo: { email: email.trim(), senha } });
+      setCodigo(r.codigoRecuperacao);
     } catch (e) {
       setErro(mensagemDe(e));
     } finally {
@@ -48,6 +50,15 @@ export default function Cadastro() {
       <h1 className="bebas mt-2 text-[34px] leading-none">Criar conta</h1>
     </div>
   );
+
+  // Conta criada: mostra o código de recuperação uma vez, antes de entrar no painel.
+  if (codigo) {
+    return (
+      <div className="mx-auto flex max-w-[480px] flex-col gap-4 px-6 pb-10 pt-10">
+        <CodigoRecuperacao codigo={codigo} rotuloBotao="Já guardei" aoContinuar={() => navegar("/painel", { replace: true })} />
+      </div>
+    );
+  }
 
   if (falha) {
     return (
